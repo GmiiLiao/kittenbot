@@ -115,10 +115,17 @@ class TelegramBotExtension {
                 for (const update of updates) {
                     this._pollOffset = update.update_id + 1;
                     if (update.message) {
-                        console.log('[TelegramBot] Message received:', update.message);
+                        console.log('[TelegramBot] ✅ Message received:', update.message.text || '(no text)', '| flag before:', this._messageFlag);
                         if (this.bot) this.bot.received_message = update.message;
                         this._messageFlag = true;
-                        try { if (this.runtime && typeof this.runtime.startHats === 'function') this.runtime.startHats('TelegramBot_block_whenmessagereceived', {}); } catch(e) {}
+                        // Try all possible startHats key formats
+                        if (this.runtime && typeof this.runtime.startHats === 'function') {
+                            console.log('[TelegramBot] Calling startHats (TelegramBot_...)');
+                            try { this.runtime.startHats('TelegramBot_block_whenmessagereceived', {}); } catch(e) { console.warn('startHats TelegramBot_ failed:', e.message); }
+                            try { this.runtime.startHats('telegrambot_block_whenmessagereceived', {}); } catch(e) { console.warn('startHats telegrambot_ failed:', e.message); }
+                        } else {
+                            console.warn('[TelegramBot] runtime.startHats NOT available! runtime:', typeof this.runtime);
+                        }
                     }
                 }
             } catch (e) {
@@ -1126,7 +1133,9 @@ class TelegramBotExtension {
     }
 
     block_whenmessagereceived (args, util) {
+        // Called every frame by runtime (isEdgeActivated:true)
         if (this._messageFlag) {
+            console.log('[TelegramBot] 🔔 Hat triggered! Resetting flag.');
             this._messageFlag = false;
             return true;
         }
