@@ -59,10 +59,16 @@ class TelegramBotExtension {
     _request (method, params) {
         const token = this.bot && this.bot.token;
         if (!token) return Promise.reject(new Error('Please set the bot first.'));
+        // Use URLSearchParams (application/x-www-form-urlencoded) to avoid CORS preflight
+        const body = new URLSearchParams();
+        if (params) {
+            for (const [k, v] of Object.entries(params)) {
+                body.append(k, typeof v === 'object' ? JSON.stringify(v) : String(v));
+            }
+        }
         return fetch(`${TELEGRAM_API}/bot${token}/${method}`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(params || {})
+            body: body
         }).then(r => r.json()).then(json => {
             if (json.ok) return json.result;
             throw new Error(json.description || `Telegram error in ${method}`);
@@ -1075,7 +1081,16 @@ class TelegramBotExtension {
                 .then(r => r.json())
                 .then(json => {
                     if (json.ok && json.result.is_bot) {
+                        this.bot.name = json.result.first_name;
+                        this.bot.username = json.result.username;
+                        this.bot.id = json.result.id;
                         console.log('[TelegramBot] Connected:', json.result.username);
+                        // Auto-start polling so users don't need a separate block
+                        if (!this._pollingActive) {
+                            this._pollingActive = true;
+                            this._pollLoop();
+                            console.log('[TelegramBot] Auto-started polling');
+                        }
                     } else {
                         this.bot = undefined;
                         throw new Error(json.description || 'Invalid bot token');
