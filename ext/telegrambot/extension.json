@@ -1,23 +1,9 @@
 {
-    "id": "TelegramBot",
-    "name": {
-        "en":"TelegramBot",
-        "zh-cn":"TelegramBot",
-        "zh-tw":"TelegramBot"
-    },
-    "extensionId": "TelegramBot",
-    "version": "1.0.1",
-    "describe": {
-        "en": "Control Telegram Bot: send/receive messages, files, location and more",
-        "zh-cn": "控制 Telegram Bot：发送/接收消息、文件、位置等",
-        "zh-tw": "控制 Telegram Bot：發送/接收訊息、檔案、位置等"
-    },
+    "name": "TelegramBot",
     "type": "scratch3",
-    "image": "https://raw.githubusercontent.com/GmiiLiao/kittenbot/main/ext/telegrambot/Telegram_2019_Logo.png",
-    "color1": "#33CCFF",
-    "color2": "#33CCFF",
-    "color3": "#FFFFFF",
-    "tags": ["data", "iot"],
-    "weights": 680,
-    "main": "https://raw.githubusercontent.com/GmiiLiao/kittenbot/main/ext/telegrambot/index.js"
+    "extensions": ["telegrambot"],
+    "image": "Telegram_2019_Logo.png",
+    "color1": "#EC5D77",
+    "color2": "#BF344D",
+    "examples": []
 }
