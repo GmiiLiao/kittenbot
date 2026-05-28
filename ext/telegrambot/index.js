@@ -3,10 +3,36 @@
 // Browser-compatible: uses fetch() API - works in kblock.kittenbot.cc AND KittenBlock desktop
 // No require() / no bundling needed
 
-const ArgumentType = Scratch.ArgumentType;
-const BlockType = Scratch.BlockType;
-const formatMessage = Scratch.formatMessage;
-const log = Scratch.log || console.log;
+const _Scratch = (typeof Scratch !== 'undefined') ? Scratch : {};
+
+// Provide fallback values for all Scratch constants (needed for online kblock.kittenbot.cc)
+const ArgumentType = _Scratch.ArgumentType || {
+    ANGLE: 'angle',
+    BOOLEAN: 'Boolean',
+    COLOR: 'color',
+    IMAGE: 'image',
+    MATRIX: 'matrix',
+    NOTE: 'note',
+    NUMBER: 'Number',
+    STRING: 'String',
+};
+
+const BlockType = _Scratch.BlockType || {
+    BOOLEAN: 'Boolean',
+    COMMAND: 'command',
+    CONDITIONAL: 'conditional',
+    DIVLABEL: 'label',
+    EVENT: 'event',
+    HAT: 'hat',
+    LOOP: 'loop',
+    REPORTER: 'reporter',
+};
+
+const formatMessage = _Scratch.formatMessage || function(obj) {
+    if (typeof obj === 'string') return obj;
+    return obj.default || obj.id || '';
+};
+const log = (_Scratch.log || console.log).bind(console);
 
 const TELEGRAM_API = 'https://api.telegram.org';
 
