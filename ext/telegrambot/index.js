@@ -97,31 +97,59 @@ class TelegramBotExtension {
         return new Blob([arr], { type: mime });
     }
 
-    // Open system file picker, returns data URL (or null if cancelled)
+    // Show a modal file-picker dialog (required by browser security – file input must be triggered by real user click)
     _pickFile (accept) {
         return new Promise((resolve) => {
-            const input = document.createElement('input');
-            input.type = 'file';
-            if (accept) input.accept = accept;
-            input.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0;pointer-events:none;';
-            document.body.appendChild(input);
-            let done = false;
-            const cleanup = () => {
-                if (done) return; done = true;
-                try { document.body.removeChild(input); } catch(e) {}
-            };
-            input.addEventListener('change', () => {
-                const file = input.files && input.files[0];
+            // --- Overlay ---
+            const ov = document.createElement('div');
+            ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:999999;display:flex;align-items:center;justify-content:center;';
+
+            // --- Card ---
+            const card = document.createElement('div');
+            card.style.cssText = 'background:#fff;padding:28px 32px;border-radius:14px;text-align:center;box-shadow:0 8px 40px rgba(0,0,0,.4);min-width:280px;font-family:sans-serif;';
+
+            const title = document.createElement('p');
+            title.textContent = '📎 選擇要傳送的檔案';
+            title.style.cssText = 'font-size:17px;font-weight:bold;color:#333;margin:0 0 22px;';
+
+            // Hidden file input
+            const fi = document.createElement('input');
+            fi.type = 'file';
+            fi.style.display = 'none';
+            if (accept) fi.accept = accept;
+
+            // Browse button (real user-click triggers browser file picker)
+            const btnPick = document.createElement('button');
+            btnPick.textContent = '📁 瀏覽檔案';
+            btnPick.style.cssText = 'background:#1E88E5;color:#fff;border:none;padding:11px 22px;border-radius:8px;font-size:15px;cursor:pointer;margin-right:10px;';
+            btnPick.onmouseenter = () => { btnPick.style.background = '#1565C0'; };
+            btnPick.onmouseleave = () => { btnPick.style.background = '#1E88E5'; };
+
+            const btnCancel = document.createElement('button');
+            btnCancel.textContent = '取消';
+            btnCancel.style.cssText = 'background:#9E9E9E;color:#fff;border:none;padding:11px 22px;border-radius:8px;font-size:15px;cursor:pointer;';
+            btnCancel.onmouseenter = () => { btnCancel.style.background = '#757575'; };
+            btnCancel.onmouseleave = () => { btnCancel.style.background = '#9E9E9E'; };
+
+            const cleanup = () => { try { document.body.removeChild(ov); } catch(e) {} };
+
+            btnPick.onclick = () => fi.click();  // User clicks button → user gesture → file picker allowed
+
+            fi.onchange = () => {
+                const file = fi.files && fi.files[0];
                 cleanup();
                 if (!file) { resolve(null); return; }
                 const reader = new FileReader();
-                reader.onload  = (e) => resolve(e.target.result); // data URL
+                reader.onload  = (e) => resolve(e.target.result);  // data URL
                 reader.onerror = () => resolve(null);
                 reader.readAsDataURL(file);
-            });
-            input.addEventListener('cancel', () => { cleanup(); resolve(null); });
-            // Small delay to ensure DOM insertion before click
-            setTimeout(() => { try { input.click(); } catch(e) { cleanup(); resolve(null); } }, 50);
+            };
+
+            btnCancel.onclick = () => { cleanup(); resolve(null); };
+
+            card.append(title, fi, btnPick, btnCancel);
+            ov.appendChild(card);
+            document.body.appendChild(ov);
         });
     }
 
