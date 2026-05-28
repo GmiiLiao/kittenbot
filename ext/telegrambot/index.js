@@ -520,7 +520,7 @@ class TelegramBotExtension {
                     arguments: {
                         PHOTO: {
                             type: ArgumentType.STRING,
-                            defaultValue: 'photo.jpg'
+                            defaultValue: 'https://...'
                         },
                         CHATID: {
                             type: ArgumentType.STRING,
@@ -563,7 +563,7 @@ class TelegramBotExtension {
                     arguments: {
                         AUDIO: {
                             type: ArgumentType.STRING,
-                            defaultValue: 'audio.mp3'
+                            defaultValue: 'https://...'
                         },
                         CHATID: {
                             type: ArgumentType.STRING,
@@ -610,7 +610,7 @@ class TelegramBotExtension {
                     arguments: {
                         VIDEO: {
                             type: ArgumentType.STRING,
-                            defaultValue: 'video.mp4'
+                            defaultValue: 'https://...'
                         },
                         CHATID: {
                             type: ArgumentType.STRING,
@@ -657,7 +657,7 @@ class TelegramBotExtension {
                     arguments: {
                         ANIMATION: {
                             type: ArgumentType.STRING,
-                            defaultValue: 'animation.gif'
+                            defaultValue: 'https://...'
                         },
                         CHATID: {
                             type: ArgumentType.STRING,
@@ -704,7 +704,7 @@ class TelegramBotExtension {
                     arguments: {
                         VOICE: {
                             type: ArgumentType.STRING,
-                            defaultValue: 'voice.ogg'
+                            defaultValue: 'https://...'
                         },
                         CHATID: {
                             type: ArgumentType.STRING,
@@ -747,7 +747,7 @@ class TelegramBotExtension {
                     arguments: {
                         DOCUMENT: {
                             type: ArgumentType.STRING,
-                            defaultValue: 'document.zip'
+                            defaultValue: 'https://...'
                         },
                         CHATID: {
                             type: ArgumentType.STRING,
