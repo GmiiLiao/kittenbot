@@ -1,0 +1,25 @@
+{
+    "id": "TelegramBot",
+    "name": {
+        "en":"TelegramBot",
+        "zh-cn":"TelegramBot",
+        "zh-tw":"TelegramBot"
+    },
+    "extensionId": "TelegramBot",
+    "version": "1.0.0",
+    "describe": {
+        "en": "Telegram Bot",
+        "zh-cn": "Telegram Bot",
+        "zh-tw": "Telegram Bot"
+    },
+    "type": "scratch3",
+    "image": "Telegram_2019_Logo.png",
+    "color1": "#EC5D77",
+    "color2": "#BF344D",
+    "color3": "#AF3249",
+    "tags": ["data"],
+    "weights": 680,
+    "examples": [
+        "ForwardAllMsgToAdmin.sb3"
+    ]
+}
