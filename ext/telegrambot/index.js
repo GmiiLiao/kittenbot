@@ -519,7 +519,7 @@ class TelegramBotExtension {
                     text: 'Send photo [PHOTO] to chat id/username/channel [CHATID] with caption [CAPTION] parsing through [PARSE] , notification [NOTIF] , reply to message id [MSGID]',
                     arguments: {
                         PHOTO: {
-                            type: ArgumentType.FILEINPUT,
+                            type: ArgumentType.STRING,
                             defaultValue: 'photo.jpg'
                         },
                         CHATID: {
@@ -533,7 +533,7 @@ class TelegramBotExtension {
                         PARSE: {
                             type: ArgumentType.STRING,
                             menu: 'parsemodes',
-                            defaultValue: 'None'
+                            defaultValue: 'none'
                         },
                         NOTIF: {
                             type: ArgumentType.STRING,
@@ -562,7 +562,7 @@ class TelegramBotExtension {
                     text: 'Send audio [AUDIO] to chat id/username/channel [CHATID] with thumbnail [THUMB], caption [CAPTION] parsing through [PARSE] , notification [NOTIF] , reply to message id [MSGID]',
                     arguments: {
                         AUDIO: {
-                            type: ArgumentType.FILEINPUT,
+                            type: ArgumentType.STRING,
                             defaultValue: 'audio.mp3'
                         },
                         CHATID: {
@@ -570,7 +570,7 @@ class TelegramBotExtension {
                             defaultValue: '0'
                         },
                         THUMB: {
-                            type: ArgumentType.FILEINPUT,
+                            type: ArgumentType.STRING,
                             defaultValue: ''
                         },
                         CAPTION: {
@@ -580,7 +580,7 @@ class TelegramBotExtension {
                         PARSE: {
                             type: ArgumentType.STRING,
                             menu: 'parsemodes',
-                            defaultValue: 'None'
+                            defaultValue: 'none'
                         },
                         NOTIF: {
                             type: ArgumentType.STRING,
@@ -609,7 +609,7 @@ class TelegramBotExtension {
                     text: 'Send video [VIDEO] to chat id/username/channel [CHATID] with thumbnail [THUMB], caption [CAPTION] parsing through [PARSE] , notification [NOTIF] , reply to message id [MSGID]',
                     arguments: {
                         VIDEO: {
-                            type: ArgumentType.FILEINPUT,
+                            type: ArgumentType.STRING,
                             defaultValue: 'video.mp4'
                         },
                         CHATID: {
@@ -617,7 +617,7 @@ class TelegramBotExtension {
                             defaultValue: '0'
                         },
                         THUMB: {
-                            type: ArgumentType.FILEINPUT,
+                            type: ArgumentType.STRING,
                             defaultValue: ''
                         },
                         CAPTION: {
@@ -627,7 +627,7 @@ class TelegramBotExtension {
                         PARSE: {
                             type: ArgumentType.STRING,
                             menu: 'parsemodes',
-                            defaultValue: 'None'
+                            defaultValue: 'none'
                         },
                         NOTIF: {
                             type: ArgumentType.STRING,
@@ -656,7 +656,7 @@ class TelegramBotExtension {
                     text: 'Send animation [ANIMATION] to chat id/username/channel [CHATID] with thumbnail [THUMB], caption [CAPTION] parsing through [PARSE] , notification [NOTIF] , reply to message id [MSGID]',
                     arguments: {
                         ANIMATION: {
-                            type: ArgumentType.FILEINPUT,
+                            type: ArgumentType.STRING,
                             defaultValue: 'animation.gif'
                         },
                         CHATID: {
@@ -664,7 +664,7 @@ class TelegramBotExtension {
                             defaultValue: '0'
                         },
                         THUMB: {
-                            type: ArgumentType.FILEINPUT,
+                            type: ArgumentType.STRING,
                             defaultValue: ''
                         },
                         CAPTION: {
@@ -674,7 +674,7 @@ class TelegramBotExtension {
                         PARSE: {
                             type: ArgumentType.STRING,
                             menu: 'parsemodes',
-                            defaultValue: 'None'
+                            defaultValue: 'none'
                         },
                         NOTIF: {
                             type: ArgumentType.STRING,
@@ -703,7 +703,7 @@ class TelegramBotExtension {
                     text: 'Send voice [VOICE] to chat id/username/channel [CHATID] with caption [CAPTION] parsing through [PARSE] , notification [NOTIF] , reply to message id [MSGID]',
                     arguments: {
                         VOICE: {
-                            type: ArgumentType.FILEINPUT,
+                            type: ArgumentType.STRING,
                             defaultValue: 'voice.ogg'
                         },
                         CHATID: {
@@ -717,7 +717,7 @@ class TelegramBotExtension {
                         PARSE: {
                             type: ArgumentType.STRING,
                             menu: 'parsemodes',
-                            defaultValue: 'None'
+                            defaultValue: 'none'
                         },
                         NOTIF: {
                             type: ArgumentType.STRING,
@@ -746,7 +746,7 @@ class TelegramBotExtension {
                     text: 'Send document [DOCUMENT] to chat id/username/channel [CHATID] with thumbnail [THUMB], caption [CAPTION] parsing through [PARSE] , notification [NOTIF] , reply to message id [MSGID]',
                     arguments: {
                         DOCUMENT: {
-                            type: ArgumentType.FILEINPUT,
+                            type: ArgumentType.STRING,
                             defaultValue: 'document.zip'
                         },
                         CHATID: {
@@ -754,7 +754,7 @@ class TelegramBotExtension {
                             defaultValue: '0'
                         },
                         THUMB: {
-                            type: ArgumentType.FILEINPUT,
+                            type: ArgumentType.STRING,
                             defaultValue: ''
                         },
                         CAPTION: {
@@ -764,7 +764,7 @@ class TelegramBotExtension {
                         PARSE: {
                             type: ArgumentType.STRING,
                             menu: 'parsemodes',
-                            defaultValue: 'None'
+                            defaultValue: 'none'
                         },
                         NOTIF: {
                             type: ArgumentType.STRING,
