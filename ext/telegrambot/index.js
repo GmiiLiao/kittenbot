@@ -60,25 +60,25 @@ class TelegramBotExtension {
     _request (method, params) {
         const token = this.bot && this.bot.token;
         if (!token) return Promise.reject(new Error('Please set the bot first.'));
-        // Use GET + query params: always CORS simple request (no preflight), Telegram supports GET for all non-file methods
-        const url = new URL(`${TELEGRAM_API}/bot${token}/${method}`);
+        // POST with URLSearchParams = "simple" CORS request (no preflight), Telegram supports this
+        const body = new URLSearchParams();
         if (params) {
             for (const [k, v] of Object.entries(params)) {
-                url.searchParams.set(k, typeof v === 'object' ? JSON.stringify(v) : String(v));
+                body.append(k, typeof v === 'object' ? JSON.stringify(v) : String(v));
             }
         }
-        console.log('[TelegramBot] API call:', method, params || {});
-        return fetch(url.toString())
-            .then(r => r.json())
-            .then(json => {
-                if (json.ok) return json.result;
-                console.error('[TelegramBot] API Error:', method, json.description);
-                throw new Error(json.description || `Telegram error in ${method}`);
-            })
-            .catch(err => {
-                console.error('[TelegramBot] Fetch Error:', method, err.message || err);
-                throw err;
-            });
+        console.log('[TelegramBot] POST', method, params || {});
+        return fetch(`${TELEGRAM_API}/bot${token}/${method}`, {
+            method: 'POST',
+            body: body
+        }).then(r => r.json()).then(json => {
+            if (json.ok) { return json.result; }
+            console.error('[TelegramBot] API Error', method, json.description);
+            throw new Error(json.description || `Telegram error in ${method}`);
+        }).catch(err => {
+            console.error('[TelegramBot] Fetch Error', method, err.message || err);
+            throw err;
+        });
     }
 
     _requestForm (method, formData) {
@@ -107,10 +107,19 @@ class TelegramBotExtension {
     _getUpdates () {
         const token = this.bot && this.bot.token;
         if (!token) return Promise.resolve([]);
-        const offset = this._pollOffset || 0;
-        return fetch(
-            `${TELEGRAM_API}/bot${token}/getUpdates?offset=${offset}&timeout=20&allowed_updates=%5B%22message%22%5D`
-        ).then(r => r.json()).then(json => json.ok ? json.result : []).catch(() => []);
+        // POST + timeout=0 (short poll): avoids 405 from GET and 409 from long-poll conflicts
+        const body = new URLSearchParams({
+            offset: String(this._pollOffset || 0),
+            timeout: '0',
+            allowed_updates: JSON.stringify(['message'])
+        });
+        return fetch(`${TELEGRAM_API}/bot${token}/getUpdates`, {
+            method: 'POST',
+            body: body
+        }).then(r => r.json()).then(json => {
+            if (!json.ok) { console.error('[TelegramBot] getUpdates error:', json.description); return []; }
+            return json.result || [];
+        }).catch(err => { console.error('[TelegramBot] getUpdates fetch error:', err.message); return []; });
     }
 
     async _pollLoop () {
@@ -1090,7 +1099,9 @@ class TelegramBotExtension {
             this._pollingActive = false;
             this._pollOffset = 0;
             this.bot = { token };
-            return fetch(`${TELEGRAM_API}/bot${token}/getMe`)
+            // Delete webhook first to allow polling (fixes 409 Conflict)
+            return fetch(`${TELEGRAM_API}/bot${token}/deleteWebhook`, {method:'POST', body: new URLSearchParams({drop_pending_updates:'false'})})
+                .then(() => fetch(`${TELEGRAM_API}/bot${token}/getMe`))
                 .then(r => r.json())
                 .then(json => {
                     if (json.ok && json.result.is_bot) {
