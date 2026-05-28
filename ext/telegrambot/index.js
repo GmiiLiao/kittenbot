@@ -99,7 +99,7 @@ class $6fe381f644bc7361$var$TelegramBotExtension {
                 if (update.message) {
                     console.log('[TelegramBot] Message received:', update.message);
                     if (this.bot) this.bot.received_message = update.message;
-                    this.runtime.startHats('telegrambot_block_whenmessagereceived', {});
+                    this.runtime.startHats('TelegramBot_block_whenmessagereceived', {});
                 }
             }
         } catch (e) {
@@ -211,7 +211,7 @@ class $6fe381f644bc7361$var$TelegramBotExtension {
     noop() {}
     getInfo() {
         return {
-            id: 'telegrambot',
+            id: 'TelegramBot',
             name: 'TelegramBot',
             color1: '#33CCFF',
             color2: '#33CCFF',
