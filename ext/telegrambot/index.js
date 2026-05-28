@@ -6,7 +6,7 @@
 const ArgumentType = Scratch.ArgumentType;
 const BlockType = Scratch.BlockType;
 const formatMessage = Scratch.formatMessage;
-const log = Scratch.log;
+const log = Scratch.log || console.log;
 
 const TELEGRAM_API = 'https://api.telegram.org';
 
@@ -16,7 +16,10 @@ const blockIconURI = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPAAAADwCAYA
 class TelegramBotExtension {
     constructor (runtime) {
         this.runtime = runtime;
-        this.runtime.registerPeripheralExtension('TelegramBot', this);
+        // registerPeripheralExtension may not exist in online kblock.kittenbot.cc
+        if (runtime && typeof runtime.registerPeripheralExtension === 'function') {
+            try { runtime.registerPeripheralExtension('TelegramBot', this); } catch(e) {}
+        }
         this.bot = undefined;       // {token, received_message, last_*_message, commands}
         this._pollingActive = false;
         this._pollOffset = 0;
@@ -1399,3 +1402,8 @@ class TelegramBotExtension {
 }
 
 module.exports = TelegramBotExtension;
+
+// Also support online Scratch/KittenBlock registration
+if (typeof Scratch !== 'undefined' && Scratch.extensions && typeof Scratch.extensions.register === 'function') {
+    Scratch.extensions.register(new TelegramBotExtension({}));
+}
