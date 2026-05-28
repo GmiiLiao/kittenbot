@@ -4,28 +4,31 @@
 // No require() / no bundling needed
 
 const _Scratch = (typeof Scratch !== 'undefined') ? Scratch : {};
+const _BT = _Scratch.BlockType || {};
+const _AT = _Scratch.ArgumentType || {};
 
-// Provide fallback values for all Scratch constants (needed for online kblock.kittenbot.cc)
-const ArgumentType = _Scratch.ArgumentType || {
-    ANGLE: 'angle',
-    BOOLEAN: 'Boolean',
-    COLOR: 'color',
-    IMAGE: 'image',
-    MATRIX: 'matrix',
-    NOTE: 'note',
-    NUMBER: 'Number',
-    STRING: 'String',
+// Merge Scratch constants with fallbacks to guarantee ALL properties exist
+// (Scratch online may have BlockType but without KittenBlock-specific DIVLABEL etc.)
+const ArgumentType = {
+    ANGLE:   _AT.ANGLE   || 'angle',
+    BOOLEAN: _AT.BOOLEAN || 'Boolean',
+    COLOR:   _AT.COLOR   || 'color',
+    IMAGE:   _AT.IMAGE   || 'image',
+    MATRIX:  _AT.MATRIX  || 'matrix',
+    NOTE:    _AT.NOTE    || 'note',
+    NUMBER:  _AT.NUMBER  || 'Number',
+    STRING:  _AT.STRING  || 'String',
 };
 
-const BlockType = _Scratch.BlockType || {
-    BOOLEAN: 'Boolean',
-    COMMAND: 'command',
-    CONDITIONAL: 'conditional',
-    DIVLABEL: 'label',
-    EVENT: 'event',
-    HAT: 'hat',
-    LOOP: 'loop',
-    REPORTER: 'reporter',
+const BlockType = {
+    BOOLEAN:     _BT.BOOLEAN     || 'Boolean',
+    COMMAND:     _BT.COMMAND     || 'command',
+    CONDITIONAL: _BT.CONDITIONAL || 'conditional',
+    DIVLABEL:    _BT.DIVLABEL    || 'label',
+    EVENT:       _BT.EVENT       || 'event',
+    HAT:         _BT.HAT         || 'hat',
+    LOOP:        _BT.LOOP        || 'loop',
+    REPORTER:    _BT.REPORTER    || 'reporter',
 };
 
 const formatMessage = _Scratch.formatMessage || function(obj) {
