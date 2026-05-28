@@ -60,20 +60,25 @@ class TelegramBotExtension {
     _request (method, params) {
         const token = this.bot && this.bot.token;
         if (!token) return Promise.reject(new Error('Please set the bot first.'));
-        // Use URLSearchParams (application/x-www-form-urlencoded) to avoid CORS preflight
-        const body = new URLSearchParams();
+        // Use GET + query params: always CORS simple request (no preflight), Telegram supports GET for all non-file methods
+        const url = new URL(`${TELEGRAM_API}/bot${token}/${method}`);
         if (params) {
             for (const [k, v] of Object.entries(params)) {
-                body.append(k, typeof v === 'object' ? JSON.stringify(v) : String(v));
+                url.searchParams.set(k, typeof v === 'object' ? JSON.stringify(v) : String(v));
             }
         }
-        return fetch(`${TELEGRAM_API}/bot${token}/${method}`, {
-            method: 'POST',
-            body: body
-        }).then(r => r.json()).then(json => {
-            if (json.ok) return json.result;
-            throw new Error(json.description || `Telegram error in ${method}`);
-        });
+        console.log('[TelegramBot] API call:', method, params || {});
+        return fetch(url.toString())
+            .then(r => r.json())
+            .then(json => {
+                if (json.ok) return json.result;
+                console.error('[TelegramBot] API Error:', method, json.description);
+                throw new Error(json.description || `Telegram error in ${method}`);
+            })
+            .catch(err => {
+                console.error('[TelegramBot] Fetch Error:', method, err.message || err);
+                throw err;
+            });
     }
 
     _requestForm (method, formData) {
