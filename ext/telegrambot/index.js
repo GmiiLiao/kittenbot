@@ -97,6 +97,34 @@ class TelegramBotExtension {
         return new Blob([arr], { type: mime });
     }
 
+    // Open system file picker, returns data URL (or null if cancelled)
+    _pickFile (accept) {
+        return new Promise((resolve) => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            if (accept) input.accept = accept;
+            input.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0;pointer-events:none;';
+            document.body.appendChild(input);
+            let done = false;
+            const cleanup = () => {
+                if (done) return; done = true;
+                try { document.body.removeChild(input); } catch(e) {}
+            };
+            input.addEventListener('change', () => {
+                const file = input.files && input.files[0];
+                cleanup();
+                if (!file) { resolve(null); return; }
+                const reader = new FileReader();
+                reader.onload  = (e) => resolve(e.target.result); // data URL
+                reader.onerror = () => resolve(null);
+                reader.readAsDataURL(file);
+            });
+            input.addEventListener('cancel', () => { cleanup(); resolve(null); });
+            // Small delay to ensure DOM insertion before click
+            setTimeout(() => { try { input.click(); } catch(e) { cleanup(); resolve(null); } }, 50);
+        });
+    }
+
     // ─── Polling ───────────────────────────────────────────────────────────────
 
     _getUpdates () {
@@ -230,20 +258,35 @@ class TelegramBotExtension {
 
     // ─── Media helper ──────────────────────────────────────────────────────────
 
-    _sendMedia (method, mediaParam, mediaValue, chatid, extra, storeKey) {
+    async _sendMedia (method, mediaParam, mediaValue, chatid, extra, storeKey) {
+        // Determine accepted file types for the picker
+        const acceptMap = {
+            photo: 'image/*', audio: 'audio/*', video: 'video/*',
+            animation: 'image/gif,video/mp4', voice: 'audio/*',
+            document: '*/*', thumb: 'image/*'
+        };
+        let value = String(mediaValue || '').trim();
+        // If field is empty or still has the default placeholder → open file picker
+        if (!value || value === 'https://example.com/file') {
+            console.log('[TelegramBot] Opening file picker for', mediaParam);
+            value = await this._pickFile(acceptMap[mediaParam] || '*/*');
+            if (!value) { console.log('[TelegramBot] File picker cancelled'); return; }
+        }
         const params = Object.assign({ chat_id: chatid }, extra);
-        if (mediaValue && mediaValue.startsWith('data:')) {
-            const ext = (mediaValue.split(';')[0].split('/')[1] || 'bin').replace('jpeg','jpg');
-            const blob = this._dataURLtoBlob(mediaValue);
+        if (value.startsWith('data:')) {
+            // Local file selected via picker – upload as multipart/form-data
+            const ext = (value.split(';')[0].split('/')[1] || 'bin').replace('jpeg','jpg');
+            const blob = this._dataURLtoBlob(value);
             const formData = new FormData();
             formData.append('chat_id', String(chatid));
             formData.append(mediaParam, blob, `file.${ext}`);
-            for (const [k, v] of Object.entries(extra)) formData.append(k, String(v));
+            for (const [k, v] of Object.entries(extra)) { if (v !== undefined) formData.append(k, String(v)); }
             return this._requestForm(method, formData).then(res => {
                 if (this.bot) this.bot[storeKey] = res;
             });
         } else {
-            params[mediaParam] = mediaValue;
+            // URL or Telegram file_id
+            params[mediaParam] = value;
             return this._request(method, params).then(res => {
                 if (this.bot) this.bot[storeKey] = res;
             });
@@ -521,7 +564,7 @@ class TelegramBotExtension {
                     arguments: {
                         PHOTO: {
                             type: ArgumentType.STRING,
-                            defaultValue: 'https://example.com/file'
+                            defaultValue: ''
                         },
                         CHATID: {
                             type: ArgumentType.STRING,
@@ -564,7 +607,7 @@ class TelegramBotExtension {
                     arguments: {
                         AUDIO: {
                             type: ArgumentType.STRING,
-                            defaultValue: 'https://example.com/file'
+                            defaultValue: ''
                         },
                         CHATID: {
                             type: ArgumentType.STRING,
@@ -611,7 +654,7 @@ class TelegramBotExtension {
                     arguments: {
                         VIDEO: {
                             type: ArgumentType.STRING,
-                            defaultValue: 'https://example.com/file'
+                            defaultValue: ''
                         },
                         CHATID: {
                             type: ArgumentType.STRING,
@@ -658,7 +701,7 @@ class TelegramBotExtension {
                     arguments: {
                         ANIMATION: {
                             type: ArgumentType.STRING,
-                            defaultValue: 'https://example.com/file'
+                            defaultValue: ''
                         },
                         CHATID: {
                             type: ArgumentType.STRING,
@@ -705,7 +748,7 @@ class TelegramBotExtension {
                     arguments: {
                         VOICE: {
                             type: ArgumentType.STRING,
-                            defaultValue: 'https://example.com/file'
+                            defaultValue: ''
                         },
                         CHATID: {
                             type: ArgumentType.STRING,
@@ -748,7 +791,7 @@ class TelegramBotExtension {
                     arguments: {
                         DOCUMENT: {
                             type: ArgumentType.STRING,
-                            defaultValue: 'https://example.com/file'
+                            defaultValue: ''
                         },
                         CHATID: {
                             type: ArgumentType.STRING,
