@@ -222,10 +222,7 @@ class $6fe381f644bc7361$var$TelegramBotExtension {
                 {
                     opcode: 'block_setbot',
                     blockType: $6fe381f644bc7361$var$BlockType.COMMAND,
-                    text: $6fe381f644bc7361$var$formatMessage({
-                        id: 'TelegramBot.block_setbot',
-                        default: 'Set the bot token [TOKEN]'
-                    }),
+                    text: 'Set the bot token [TOKEN]',
                     arguments: {
                         TOKEN: {
                             type: $6fe381f644bc7361$var$ArgumentType.STRING,
@@ -238,37 +235,25 @@ class $6fe381f644bc7361$var$TelegramBotExtension {
                 {
                     opcode: 'block_getname',
                     blockType: $6fe381f644bc7361$var$BlockType.REPORTER,
-                    text: $6fe381f644bc7361$var$formatMessage({
-                        id: 'TelegramBot.block_getname',
-                        default: 'Bot name'
-                    }),
+                    text: 'Bot name',
                     func: 'block_getname'
                 },
                 {
                     opcode: 'block_getusername',
                     blockType: $6fe381f644bc7361$var$BlockType.REPORTER,
-                    text: $6fe381f644bc7361$var$formatMessage({
-                        id: 'TelegramBot.block_getusername',
-                        default: 'Bot username'
-                    }),
+                    text: 'Bot username',
                     func: 'block_getusername',
                     sepafter: 36
                 },
                 {
                     func: 'noop',
                     blockType: $6fe381f644bc7361$var$BlockType.DIVLABEL,
-                    text: $6fe381f644bc7361$var$formatMessage({
-                        id: 'TelegramBot.block_receive',
-                        default: 'Receive'
-                    })
+                    text: 'Receive'
                 },
                 // {
                 //     opcode: 'block_getupdates',
                 //     blockType: BlockType.COMMAND,
-                //     text: formatMessage({
-                //         id: 'TelegramBot.block_getupdates',
-                //         default: 'Get updates: offset [OFFSET] limit [LIMIT] (1~100) timeout [TIMEOUT] s'
-                //     }),
+                //     text: 'Get updates: offset [OFFSET] limit [LIMIT] (1~100) timeout [TIMEOUT] s',
                 //     arguments: {
                 //         OFFSET: {
                 //             type: ArgumentType.NUMBER,
@@ -288,19 +273,13 @@ class $6fe381f644bc7361$var$TelegramBotExtension {
                 // {
                 //     opcode: 'block_getnumofmessages',
                 //     blockType: BlockType.REPORTER,
-                //     text: formatMessage({
-                //         id: 'TelegramBot.block_getnumofmessages',
-                //         default: 'Number of messages'
-                //     }),
+                //     text: 'Number of messages',
                 //     func: 'block_getnumofmessages'
                 // },
                 // {
                 //     opcode: 'block_messageis',
                 //     blockType: BlockType.BOOLEAN,
-                //     text: formatMessage({
-                //         id: 'TelegramBot.block_messageis',
-                //         default: 'Message [INDEX] is [TYPE] ?'
-                //     }),
+                //     text: 'Message [INDEX] is [TYPE] ?',
                 //     arguments: {
                 //         INDEX: {
                 //             type: ArgumentType.NUMBER,
@@ -317,10 +296,7 @@ class $6fe381f644bc7361$var$TelegramBotExtension {
                 // {
                 //     opcode: 'block_gettextmessagestate',
                 //     blockType: BlockType.REPORTER,
-                //     text: formatMessage({
-                //         id: 'TelegramBot.block_gettextmessagestate',
-                //         default: 'Text message [INDEX] [STATE]'
-                //     }),
+                //     text: 'Text message [INDEX] [STATE]',
                 //     arguments: {
                 //         INDEX: {
                 //             type: ArgumentType.NUMBER,
@@ -338,10 +314,7 @@ class $6fe381f644bc7361$var$TelegramBotExtension {
                 {
                     opcode: 'block_setpolling',
                     blockType: $6fe381f644bc7361$var$BlockType.COMMAND,
-                    text: $6fe381f644bc7361$var$formatMessage({
-                        id: 'TelegramBot.block_setpolling',
-                        default: 'Message polling [SW]'
-                    }),
+                    text: 'Message polling [SW]',
                     arguments: {
                         SW: {
                             type: $6fe381f644bc7361$var$ArgumentType.STRING,
@@ -355,19 +328,13 @@ class $6fe381f644bc7361$var$TelegramBotExtension {
                     opcode: 'block_whenmessagereceived',
                     blockType: $6fe381f644bc7361$var$BlockType.HAT,
                     isEdgeActivated: false,
-                    text: $6fe381f644bc7361$var$formatMessage({
-                        id: 'TelegramBot.block_whenmessagereceived',
-                        default: 'When message received'
-                    }),
+                    text: 'When message received',
                     func: 'block_whenmessagereceived'
                 },
                 {
                     opcode: 'block_receivedmessageis',
                     blockType: $6fe381f644bc7361$var$BlockType.BOOLEAN,
-                    text: $6fe381f644bc7361$var$formatMessage({
-                        id: 'TelegramBot.block_receivedmessageis',
-                        default: 'Received message is [TYPE] ?'
-                    }),
+                    text: 'Received message is [TYPE] ?',
                     arguments: {
                         TYPE: {
                             type: $6fe381f644bc7361$var$ArgumentType.STRING,
@@ -380,10 +347,7 @@ class $6fe381f644bc7361$var$TelegramBotExtension {
                 {
                     opcode: 'block_getreceivedtextmessagestate',
                     blockType: $6fe381f644bc7361$var$BlockType.REPORTER,
-                    text: $6fe381f644bc7361$var$formatMessage({
-                        id: 'TelegramBot.block_getreceivedtextmessagestate',
-                        default: 'Received text message [STATE]'
-                    }),
+                    text: 'Received text message [STATE]',
                     arguments: {
                         STATE: {
                             type: $6fe381f644bc7361$var$ArgumentType.STRING,
@@ -396,19 +360,13 @@ class $6fe381f644bc7361$var$TelegramBotExtension {
                 {
                     opcode: 'block_getreceivedtextmessageentitiescount',
                     blockType: $6fe381f644bc7361$var$BlockType.REPORTER,
-                    text: $6fe381f644bc7361$var$formatMessage({
-                        id: 'TelegramBot.block_getreceivedtextmessageentitiescount',
-                        default: 'Number of entities in received text message'
-                    }),
+                    text: 'Number of entities in received text message',
                     func: 'block_getreceivedtextmessageentitiescount'
                 },
                 {
                     opcode: 'block_receivedtextmessageentityis',
                     blockType: $6fe381f644bc7361$var$BlockType.BOOLEAN,
-                    text: $6fe381f644bc7361$var$formatMessage({
-                        id: 'TelegramBot.block_receivedtextmessageentityis',
-                        default: 'Received text message entity [INDEX] is [TYPE] ?'
-                    }),
+                    text: 'Received text message entity [INDEX] is [TYPE] ?',
                     arguments: {
                         INDEX: {
                             type: $6fe381f644bc7361$var$ArgumentType.NUMBER,
@@ -425,10 +383,7 @@ class $6fe381f644bc7361$var$TelegramBotExtension {
                 {
                     opcode: 'block_getreceivedtextmessageentitystate',
                     blockType: $6fe381f644bc7361$var$BlockType.REPORTER,
-                    text: $6fe381f644bc7361$var$formatMessage({
-                        id: 'TelegramBot.block_getreceivedtextmessageentitystate',
-                        default: 'Received text message entity [INDEX] [STATE]'
-                    }),
+                    text: 'Received text message entity [INDEX] [STATE]',
                     arguments: {
                         INDEX: {
                             type: $6fe381f644bc7361$var$ArgumentType.NUMBER,
@@ -445,10 +400,7 @@ class $6fe381f644bc7361$var$TelegramBotExtension {
                 {
                     opcode: 'block_forwardreceivedmessage',
                     blockType: $6fe381f644bc7361$var$BlockType.COMMAND,
-                    text: $6fe381f644bc7361$var$formatMessage({
-                        id: 'TelegramBot.block_forwardreceivedmessage',
-                        default: 'Forward received message to chat id/username/channel [CHATID] , notification [NOTIF]'
-                    }),
+                    text: 'Forward received message to chat id/username/channel [CHATID] , notification [NOTIF]',
                     arguments: {
                         CHATID: {
                             type: $6fe381f644bc7361$var$ArgumentType.STRING,
@@ -466,18 +418,12 @@ class $6fe381f644bc7361$var$TelegramBotExtension {
                 {
                     func: 'noop',
                     blockType: $6fe381f644bc7361$var$BlockType.DIVLABEL,
-                    text: $6fe381f644bc7361$var$formatMessage({
-                        id: 'TelegramBot.block_send',
-                        default: 'Send'
-                    })
+                    text: 'Send'
                 },
                 {
                     opcode: 'block_sendmessage',
                     blockType: $6fe381f644bc7361$var$BlockType.COMMAND,
-                    text: $6fe381f644bc7361$var$formatMessage({
-                        id: 'TelegramBot.block_sendmessage',
-                        default: 'Send message [TEXT] parsing through [PARSE] to chat id/username/channel [CHATID] , notification [NOTIF] , reply to message id [MSGID]'
-                    }),
+                    text: 'Send message [TEXT] parsing through [PARSE] to chat id/username/channel [CHATID] , notification [NOTIF] , reply to message id [MSGID]',
                     arguments: {
                         TEXT: {
                             type: $6fe381f644bc7361$var$ArgumentType.STRING,
@@ -508,10 +454,7 @@ class $6fe381f644bc7361$var$TelegramBotExtension {
                 {
                     opcode: 'block_sendphoto',
                     blockType: $6fe381f644bc7361$var$BlockType.COMMAND,
-                    text: $6fe381f644bc7361$var$formatMessage({
-                        id: 'TelegramBot.block_sendphoto',
-                        default: 'Send photo [PHOTO] to chat id/username/channel [CHATID] with caption [CAPTION] parsing through [PARSE] , notification [NOTIF] , reply to message id [MSGID]'
-                    }),
+                    text: 'Send photo [PHOTO] to chat id/username/channel [CHATID] with caption [CAPTION] parsing through [PARSE] , notification [NOTIF] , reply to message id [MSGID]',
                     arguments: {
                         PHOTO: {
                             type: $6fe381f644bc7361$var$ArgumentType.FILEINPUT,
@@ -545,20 +488,14 @@ class $6fe381f644bc7361$var$TelegramBotExtension {
                 {
                     opcode: 'block_lastphotoid',
                     blockType: $6fe381f644bc7361$var$BlockType.REPORTER,
-                    text: $6fe381f644bc7361$var$formatMessage({
-                        id: 'TelegramBot.block_lastphotoid',
-                        default: 'Sent photo id'
-                    }),
+                    text: 'Sent photo id',
                     func: 'block_lastphotoid',
                     sepafter: 36
                 },
                 {
                     opcode: 'block_sendaudio',
                     blockType: $6fe381f644bc7361$var$BlockType.COMMAND,
-                    text: $6fe381f644bc7361$var$formatMessage({
-                        id: 'TelegramBot.block_sendaudio',
-                        default: 'Send audio [AUDIO] to chat id/username/channel [CHATID] with thumbnail [THUMB], caption [CAPTION] parsing through [PARSE] , notification [NOTIF] , reply to message id [MSGID]'
-                    }),
+                    text: 'Send audio [AUDIO] to chat id/username/channel [CHATID] with thumbnail [THUMB], caption [CAPTION] parsing through [PARSE] , notification [NOTIF] , reply to message id [MSGID]',
                     arguments: {
                         AUDIO: {
                             type: $6fe381f644bc7361$var$ArgumentType.FILEINPUT,
@@ -596,20 +533,14 @@ class $6fe381f644bc7361$var$TelegramBotExtension {
                 {
                     opcode: 'block_lastaudioid',
                     blockType: $6fe381f644bc7361$var$BlockType.REPORTER,
-                    text: $6fe381f644bc7361$var$formatMessage({
-                        id: 'TelegramBot.block_lastaudioid',
-                        default: 'Sent audio id'
-                    }),
+                    text: 'Sent audio id',
                     func: 'block_lastaudioid',
                     sepafter: 36
                 },
                 {
                     opcode: 'block_sendvideo',
                     blockType: $6fe381f644bc7361$var$BlockType.COMMAND,
-                    text: $6fe381f644bc7361$var$formatMessage({
-                        id: 'TelegramBot.block_sendvideo',
-                        default: 'Send video [VIDEO] to chat id/username/channel [CHATID] with thumbnail [THUMB], caption [CAPTION] parsing through [PARSE] , notification [NOTIF] , reply to message id [MSGID]'
-                    }),
+                    text: 'Send video [VIDEO] to chat id/username/channel [CHATID] with thumbnail [THUMB], caption [CAPTION] parsing through [PARSE] , notification [NOTIF] , reply to message id [MSGID]',
                     arguments: {
                         VIDEO: {
                             type: $6fe381f644bc7361$var$ArgumentType.FILEINPUT,
@@ -647,20 +578,14 @@ class $6fe381f644bc7361$var$TelegramBotExtension {
                 {
                     opcode: 'block_lastvideoid',
                     blockType: $6fe381f644bc7361$var$BlockType.REPORTER,
-                    text: $6fe381f644bc7361$var$formatMessage({
-                        id: 'TelegramBot.block_lastvideoid',
-                        default: 'Sent video id'
-                    }),
+                    text: 'Sent video id',
                     func: 'block_lastvideoid',
                     sepafter: 36
                 },
                 {
                     opcode: 'block_sendanimation',
                     blockType: $6fe381f644bc7361$var$BlockType.COMMAND,
-                    text: $6fe381f644bc7361$var$formatMessage({
-                        id: 'TelegramBot.block_sendanimation',
-                        default: 'Send animation [ANIMATION] to chat id/username/channel [CHATID] with thumbnail [THUMB], caption [CAPTION] parsing through [PARSE] , notification [NOTIF] , reply to message id [MSGID]'
-                    }),
+                    text: 'Send animation [ANIMATION] to chat id/username/channel [CHATID] with thumbnail [THUMB], caption [CAPTION] parsing through [PARSE] , notification [NOTIF] , reply to message id [MSGID]',
                     arguments: {
                         ANIMATION: {
                             type: $6fe381f644bc7361$var$ArgumentType.FILEINPUT,
@@ -698,20 +623,14 @@ class $6fe381f644bc7361$var$TelegramBotExtension {
                 {
                     opcode: 'block_lastanimationid',
                     blockType: $6fe381f644bc7361$var$BlockType.REPORTER,
-                    text: $6fe381f644bc7361$var$formatMessage({
-                        id: 'TelegramBot.block_lastanimationid',
-                        default: 'Sent animation id'
-                    }),
+                    text: 'Sent animation id',
                     func: 'block_lastanimationid',
                     sepafter: 36
                 },
                 {
                     opcode: 'block_sendvoice',
                     blockType: $6fe381f644bc7361$var$BlockType.COMMAND,
-                    text: $6fe381f644bc7361$var$formatMessage({
-                        id: 'TelegramBot.block_sendvoice',
-                        default: 'Send voice [VOICE] to chat id/username/channel [CHATID] with caption [CAPTION] parsing through [PARSE] , notification [NOTIF] , reply to message id [MSGID]'
-                    }),
+                    text: 'Send voice [VOICE] to chat id/username/channel [CHATID] with caption [CAPTION] parsing through [PARSE] , notification [NOTIF] , reply to message id [MSGID]',
                     arguments: {
                         VOICE: {
                             type: $6fe381f644bc7361$var$ArgumentType.FILEINPUT,
@@ -745,20 +664,14 @@ class $6fe381f644bc7361$var$TelegramBotExtension {
                 {
                     opcode: 'block_lastvoiceid',
                     blockType: $6fe381f644bc7361$var$BlockType.REPORTER,
-                    text: $6fe381f644bc7361$var$formatMessage({
-                        id: 'TelegramBot.block_lastvoiceid',
-                        default: 'Sent voice id'
-                    }),
+                    text: 'Sent voice id',
                     func: 'block_lastvoiceid',
                     sepafter: 36
                 },
                 {
                     opcode: 'block_senddocument',
                     blockType: $6fe381f644bc7361$var$BlockType.COMMAND,
-                    text: $6fe381f644bc7361$var$formatMessage({
-                        id: 'TelegramBot.block_senddocument',
-                        default: 'Send document [DOCUMENT] to chat id/username/channel [CHATID] with thumbnail [THUMB], caption [CAPTION] parsing through [PARSE] , notification [NOTIF] , reply to message id [MSGID]'
-                    }),
+                    text: 'Send document [DOCUMENT] to chat id/username/channel [CHATID] with thumbnail [THUMB], caption [CAPTION] parsing through [PARSE] , notification [NOTIF] , reply to message id [MSGID]',
                     arguments: {
                         DOCUMENT: {
                             type: $6fe381f644bc7361$var$ArgumentType.FILEINPUT,
@@ -796,20 +709,14 @@ class $6fe381f644bc7361$var$TelegramBotExtension {
                 {
                     opcode: 'block_lastdocumentid',
                     blockType: $6fe381f644bc7361$var$BlockType.REPORTER,
-                    text: $6fe381f644bc7361$var$formatMessage({
-                        id: 'TelegramBot.block_lastdocumentid',
-                        default: 'Sent document id'
-                    }),
+                    text: 'Sent document id',
                     func: 'block_lastdocumentid',
                     sepafter: 36
                 },
                 {
                     opcode: 'block_sendlocation',
                     blockType: $6fe381f644bc7361$var$BlockType.COMMAND,
-                    text: $6fe381f644bc7361$var$formatMessage({
-                        id: 'TelegramBot.block_sendlocation',
-                        default: 'Send location latitude [LATITUDE] longitude [LONGITUDE] to chat id/username/channel [CHATID]'
-                    }),
+                    text: 'Send location latitude [LATITUDE] longitude [LONGITUDE] to chat id/username/channel [CHATID]',
                     arguments: {
                         LATITUDE: {
                             type: $6fe381f644bc7361$var$ArgumentType.NUMBER,
@@ -830,10 +737,7 @@ class $6fe381f644bc7361$var$TelegramBotExtension {
                 {
                     opcode: 'block_sendcontact',
                     blockType: $6fe381f644bc7361$var$BlockType.COMMAND,
-                    text: $6fe381f644bc7361$var$formatMessage({
-                        id: 'TelegramBot.block_sendcontact',
-                        default: 'Send contact first name [FNAME] last name [LNAME] phone number [PHONE] to chat id/username/channel [CHATID]'
-                    }),
+                    text: 'Send contact first name [FNAME] last name [LNAME] phone number [PHONE] to chat id/username/channel [CHATID]',
                     arguments: {
                         FNAME: {
                             type: $6fe381f644bc7361$var$ArgumentType.STRING,
@@ -858,27 +762,18 @@ class $6fe381f644bc7361$var$TelegramBotExtension {
                 {
                     func: 'noop',
                     blockType: $6fe381f644bc7361$var$BlockType.DIVLABEL,
-                    text: $6fe381f644bc7361$var$formatMessage({
-                        id: 'TelegramBot.block_command',
-                        default: 'Command'
-                    })
+                    text: 'Command'
                 },
                 {
                     opcode: 'block_getcommandcount',
                     blockType: $6fe381f644bc7361$var$BlockType.REPORTER,
-                    text: $6fe381f644bc7361$var$formatMessage({
-                        id: 'TelegramBot.block_getcommandcount',
-                        default: 'Number of commands'
-                    }),
+                    text: 'Number of commands',
                     func: 'block_getcommandcount'
                 },
                 {
                     opcode: 'block_getcommandstate',
                     blockType: $6fe381f644bc7361$var$BlockType.REPORTER,
-                    text: $6fe381f644bc7361$var$formatMessage({
-                        id: 'TelegramBot.block_getcommandstate',
-                        default: 'Command [INDEX] [STATE]'
-                    }),
+                    text: 'Command [INDEX] [STATE]',
                     arguments: {
                         INDEX: {
                             type: $6fe381f644bc7361$var$ArgumentType.NUMBER,
@@ -895,10 +790,7 @@ class $6fe381f644bc7361$var$TelegramBotExtension {
                 {
                     opcode: 'block_setcommand',
                     blockType: $6fe381f644bc7361$var$BlockType.COMMAND,
-                    text: $6fe381f644bc7361$var$formatMessage({
-                        id: 'TelegramBot.block_setcommand',
-                        default: 'Set Command [COMMAND] [DESCRIPTION]'
-                    }),
+                    text: 'Set Command [COMMAND] [DESCRIPTION]',
                     arguments: {
                         COMMAND: {
                             type: $6fe381f644bc7361$var$ArgumentType.STRING,
@@ -914,10 +806,7 @@ class $6fe381f644bc7361$var$TelegramBotExtension {
                 {
                     opcode: 'block_removecommand',
                     blockType: $6fe381f644bc7361$var$BlockType.COMMAND,
-                    text: $6fe381f644bc7361$var$formatMessage({
-                        id: 'TelegramBot.block_removecommand',
-                        default: 'Remove Command [INDEX]'
-                    }),
+                    text: 'Remove Command [INDEX]',
                     arguments: {
                         INDEX: {
                             type: $6fe381f644bc7361$var$ArgumentType.NUMBER,
@@ -929,10 +818,7 @@ class $6fe381f644bc7361$var$TelegramBotExtension {
                 {
                     opcode: 'block_clearcommand',
                     blockType: $6fe381f644bc7361$var$BlockType.COMMAND,
-                    text: $6fe381f644bc7361$var$formatMessage({
-                        id: 'TelegramBot.block_clearcommand',
-                        default: 'Clear Command'
-                    }),
+                    text: 'Clear Command',
                     func: 'block_clearcommand',
                     sepafter: 36
                 }
