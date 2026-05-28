@@ -49,10 +49,9 @@ class TelegramBotExtension {
         if (runtime && typeof runtime.registerPeripheralExtension === 'function') {
             try { runtime.registerPeripheralExtension('TelegramBot', this); } catch(e) {}
         }
-        this.bot = undefined;
+        this.bot = undefined;       // {token, received_message, last_*_message, commands}
         this._pollingActive = false;
         this._pollOffset = 0;
-        this._messageFlag = false;   // edge-activated hat flag
     }
 
     // ─── Core: Telegram API via fetch ──────────────────────────────────────────
@@ -60,24 +59,19 @@ class TelegramBotExtension {
     _request (method, params) {
         const token = this.bot && this.bot.token;
         if (!token) return Promise.reject(new Error('Please set the bot first.'));
-        // POST with URLSearchParams = "simple" CORS request (no preflight), Telegram supports this
+        // Use URLSearchParams (application/x-www-form-urlencoded) to avoid CORS preflight
         const body = new URLSearchParams();
         if (params) {
             for (const [k, v] of Object.entries(params)) {
                 body.append(k, typeof v === 'object' ? JSON.stringify(v) : String(v));
             }
         }
-        console.log('[TelegramBot] POST', method, params || {});
         return fetch(`${TELEGRAM_API}/bot${token}/${method}`, {
             method: 'POST',
             body: body
         }).then(r => r.json()).then(json => {
-            if (json.ok) { return json.result; }
-            console.error('[TelegramBot] API Error', method, json.description);
+            if (json.ok) return json.result;
             throw new Error(json.description || `Telegram error in ${method}`);
-        }).catch(err => {
-            console.error('[TelegramBot] Fetch Error', method, err.message || err);
-            throw err;
         });
     }
 
@@ -107,19 +101,10 @@ class TelegramBotExtension {
     _getUpdates () {
         const token = this.bot && this.bot.token;
         if (!token) return Promise.resolve([]);
-        // POST + timeout=0 (short poll): avoids 405 from GET and 409 from long-poll conflicts
-        const body = new URLSearchParams({
-            offset: String(this._pollOffset || 0),
-            timeout: '0',
-            allowed_updates: JSON.stringify(['message'])
-        });
-        return fetch(`${TELEGRAM_API}/bot${token}/getUpdates`, {
-            method: 'POST',
-            body: body
-        }).then(r => r.json()).then(json => {
-            if (!json.ok) { console.error('[TelegramBot] getUpdates error:', json.description); return []; }
-            return json.result || [];
-        }).catch(err => { console.error('[TelegramBot] getUpdates fetch error:', err.message); return []; });
+        const offset = this._pollOffset || 0;
+        return fetch(
+            `${TELEGRAM_API}/bot${token}/getUpdates?offset=${offset}&timeout=20&allowed_updates=%5B%22message%22%5D`
+        ).then(r => r.json()).then(json => json.ok ? json.result : []).catch(() => []);
     }
 
     async _pollLoop () {
@@ -132,14 +117,8 @@ class TelegramBotExtension {
                     if (update.message) {
                         console.log('[TelegramBot] Message received:', update.message);
                         if (this.bot) this.bot.received_message = update.message;
-                        // Use flag (edge-activated) - works in all KittenBlock versions
                         this._messageFlag = true;
-                        // Also try startHats as backup (may not work in online version)
-                        try {
-                            if (this.runtime && typeof this.runtime.startHats === 'function') {
-                                this.runtime.startHats('TelegramBot_block_whenmessagereceived', {});
-                            }
-                        } catch(e) {}
+                        try { if (this.runtime && typeof this.runtime.startHats === 'function') this.runtime.startHats('TelegramBot_block_whenmessagereceived', {}); } catch(e) {}
                     }
                 }
             } catch (e) {
@@ -533,7 +512,7 @@ class TelegramBotExtension {
                     text: 'Send photo [PHOTO] to chat id/username/channel [CHATID] with caption [CAPTION] parsing through [PARSE] , notification [NOTIF] , reply to message id [MSGID]',
                     arguments: {
                         PHOTO: {
-                            type: ArgumentType.STRING,
+                            type: ArgumentType.FILEINPUT,
                             defaultValue: 'photo.jpg'
                         },
                         CHATID: {
@@ -547,7 +526,7 @@ class TelegramBotExtension {
                         PARSE: {
                             type: ArgumentType.STRING,
                             menu: 'parsemodes',
-                            defaultValue: 'none'
+                            defaultValue: 'None'
                         },
                         NOTIF: {
                             type: ArgumentType.STRING,
@@ -576,7 +555,7 @@ class TelegramBotExtension {
                     text: 'Send audio [AUDIO] to chat id/username/channel [CHATID] with thumbnail [THUMB], caption [CAPTION] parsing through [PARSE] , notification [NOTIF] , reply to message id [MSGID]',
                     arguments: {
                         AUDIO: {
-                            type: ArgumentType.STRING,
+                            type: ArgumentType.FILEINPUT,
                             defaultValue: 'audio.mp3'
                         },
                         CHATID: {
@@ -584,7 +563,7 @@ class TelegramBotExtension {
                             defaultValue: '0'
                         },
                         THUMB: {
-                            type: ArgumentType.STRING,
+                            type: ArgumentType.FILEINPUT,
                             defaultValue: ''
                         },
                         CAPTION: {
@@ -594,7 +573,7 @@ class TelegramBotExtension {
                         PARSE: {
                             type: ArgumentType.STRING,
                             menu: 'parsemodes',
-                            defaultValue: 'none'
+                            defaultValue: 'None'
                         },
                         NOTIF: {
                             type: ArgumentType.STRING,
@@ -623,7 +602,7 @@ class TelegramBotExtension {
                     text: 'Send video [VIDEO] to chat id/username/channel [CHATID] with thumbnail [THUMB], caption [CAPTION] parsing through [PARSE] , notification [NOTIF] , reply to message id [MSGID]',
                     arguments: {
                         VIDEO: {
-                            type: ArgumentType.STRING,
+                            type: ArgumentType.FILEINPUT,
                             defaultValue: 'video.mp4'
                         },
                         CHATID: {
@@ -631,7 +610,7 @@ class TelegramBotExtension {
                             defaultValue: '0'
                         },
                         THUMB: {
-                            type: ArgumentType.STRING,
+                            type: ArgumentType.FILEINPUT,
                             defaultValue: ''
                         },
                         CAPTION: {
@@ -641,7 +620,7 @@ class TelegramBotExtension {
                         PARSE: {
                             type: ArgumentType.STRING,
                             menu: 'parsemodes',
-                            defaultValue: 'none'
+                            defaultValue: 'None'
                         },
                         NOTIF: {
                             type: ArgumentType.STRING,
@@ -670,7 +649,7 @@ class TelegramBotExtension {
                     text: 'Send animation [ANIMATION] to chat id/username/channel [CHATID] with thumbnail [THUMB], caption [CAPTION] parsing through [PARSE] , notification [NOTIF] , reply to message id [MSGID]',
                     arguments: {
                         ANIMATION: {
-                            type: ArgumentType.STRING,
+                            type: ArgumentType.FILEINPUT,
                             defaultValue: 'animation.gif'
                         },
                         CHATID: {
@@ -678,7 +657,7 @@ class TelegramBotExtension {
                             defaultValue: '0'
                         },
                         THUMB: {
-                            type: ArgumentType.STRING,
+                            type: ArgumentType.FILEINPUT,
                             defaultValue: ''
                         },
                         CAPTION: {
@@ -688,7 +667,7 @@ class TelegramBotExtension {
                         PARSE: {
                             type: ArgumentType.STRING,
                             menu: 'parsemodes',
-                            defaultValue: 'none'
+                            defaultValue: 'None'
                         },
                         NOTIF: {
                             type: ArgumentType.STRING,
@@ -717,7 +696,7 @@ class TelegramBotExtension {
                     text: 'Send voice [VOICE] to chat id/username/channel [CHATID] with caption [CAPTION] parsing through [PARSE] , notification [NOTIF] , reply to message id [MSGID]',
                     arguments: {
                         VOICE: {
-                            type: ArgumentType.STRING,
+                            type: ArgumentType.FILEINPUT,
                             defaultValue: 'voice.ogg'
                         },
                         CHATID: {
@@ -731,7 +710,7 @@ class TelegramBotExtension {
                         PARSE: {
                             type: ArgumentType.STRING,
                             menu: 'parsemodes',
-                            defaultValue: 'none'
+                            defaultValue: 'None'
                         },
                         NOTIF: {
                             type: ArgumentType.STRING,
@@ -760,7 +739,7 @@ class TelegramBotExtension {
                     text: 'Send document [DOCUMENT] to chat id/username/channel [CHATID] with thumbnail [THUMB], caption [CAPTION] parsing through [PARSE] , notification [NOTIF] , reply to message id [MSGID]',
                     arguments: {
                         DOCUMENT: {
-                            type: ArgumentType.STRING,
+                            type: ArgumentType.FILEINPUT,
                             defaultValue: 'document.zip'
                         },
                         CHATID: {
@@ -768,7 +747,7 @@ class TelegramBotExtension {
                             defaultValue: '0'
                         },
                         THUMB: {
-                            type: ArgumentType.STRING,
+                            type: ArgumentType.FILEINPUT,
                             defaultValue: ''
                         },
                         CAPTION: {
@@ -778,7 +757,7 @@ class TelegramBotExtension {
                         PARSE: {
                             type: ArgumentType.STRING,
                             menu: 'parsemodes',
-                            defaultValue: 'none'
+                            defaultValue: 'None'
                         },
                         NOTIF: {
                             type: ArgumentType.STRING,
@@ -1099,9 +1078,7 @@ class TelegramBotExtension {
             this._pollingActive = false;
             this._pollOffset = 0;
             this.bot = { token };
-            // Delete webhook first to allow polling (fixes 409 Conflict)
-            return fetch(`${TELEGRAM_API}/bot${token}/deleteWebhook`, {method:'POST', body: new URLSearchParams({drop_pending_updates:'false'})})
-                .then(() => fetch(`${TELEGRAM_API}/bot${token}/getMe`))
+            return fetch(`${TELEGRAM_API}/bot${token}/getMe`)
                 .then(r => r.json())
                 .then(json => {
                     if (json.ok && json.result.is_bot) {
@@ -1149,7 +1126,6 @@ class TelegramBotExtension {
     }
 
     block_whenmessagereceived (args, util) {
-        // Edge-activated: return true once per message, then reset flag
         if (this._messageFlag) {
             this._messageFlag = false;
             return true;
