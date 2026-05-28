@@ -52,6 +52,7 @@ class TelegramBotExtension {
         this.bot = undefined;       // {token, received_message, last_*_message, commands}
         this._pollingActive = false;
         this._pollOffset = 0;
+        this._messageFlag = false;   // edge-activated hat flag
     }
 
     // ─── Core: Telegram API via fetch ──────────────────────────────────────────
@@ -520,7 +521,7 @@ class TelegramBotExtension {
                     arguments: {
                         PHOTO: {
                             type: ArgumentType.STRING,
-                            defaultValue: 'https://...'
+                            defaultValue: 'https://example.com/file'
                         },
                         CHATID: {
                             type: ArgumentType.STRING,
@@ -563,7 +564,7 @@ class TelegramBotExtension {
                     arguments: {
                         AUDIO: {
                             type: ArgumentType.STRING,
-                            defaultValue: 'https://...'
+                            defaultValue: 'https://example.com/file'
                         },
                         CHATID: {
                             type: ArgumentType.STRING,
@@ -610,7 +611,7 @@ class TelegramBotExtension {
                     arguments: {
                         VIDEO: {
                             type: ArgumentType.STRING,
-                            defaultValue: 'https://...'
+                            defaultValue: 'https://example.com/file'
                         },
                         CHATID: {
                             type: ArgumentType.STRING,
@@ -657,7 +658,7 @@ class TelegramBotExtension {
                     arguments: {
                         ANIMATION: {
                             type: ArgumentType.STRING,
-                            defaultValue: 'https://...'
+                            defaultValue: 'https://example.com/file'
                         },
                         CHATID: {
                             type: ArgumentType.STRING,
@@ -704,7 +705,7 @@ class TelegramBotExtension {
                     arguments: {
                         VOICE: {
                             type: ArgumentType.STRING,
-                            defaultValue: 'https://...'
+                            defaultValue: 'https://example.com/file'
                         },
                         CHATID: {
                             type: ArgumentType.STRING,
@@ -747,7 +748,7 @@ class TelegramBotExtension {
                     arguments: {
                         DOCUMENT: {
                             type: ArgumentType.STRING,
-                            defaultValue: 'https://...'
+                            defaultValue: 'https://example.com/file'
                         },
                         CHATID: {
                             type: ArgumentType.STRING,
