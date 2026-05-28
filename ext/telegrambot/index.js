@@ -49,9 +49,10 @@ class TelegramBotExtension {
         if (runtime && typeof runtime.registerPeripheralExtension === 'function') {
             try { runtime.registerPeripheralExtension('TelegramBot', this); } catch(e) {}
         }
-        this.bot = undefined;       // {token, received_message, last_*_message, commands}
+        this.bot = undefined;
         this._pollingActive = false;
         this._pollOffset = 0;
+        this._messageFlag = false;   // edge-activated hat flag
     }
 
     // ─── Core: Telegram API via fetch ──────────────────────────────────────────
@@ -117,7 +118,14 @@ class TelegramBotExtension {
                     if (update.message) {
                         console.log('[TelegramBot] Message received:', update.message);
                         if (this.bot) this.bot.received_message = update.message;
-                        this.runtime.startHats('TelegramBot_block_whenmessagereceived', {});
+                        // Use flag (edge-activated) - works in all KittenBlock versions
+                        this._messageFlag = true;
+                        // Also try startHats as backup (may not work in online version)
+                        try {
+                            if (this.runtime && typeof this.runtime.startHats === 'function') {
+                                this.runtime.startHats('TelegramBot_block_whenmessagereceived', {});
+                            }
+                        } catch(e) {}
                     }
                 }
             } catch (e) {
@@ -372,7 +380,7 @@ class TelegramBotExtension {
                 {
                     opcode: 'block_whenmessagereceived',
                     blockType: BlockType.HAT,
-                    isEdgeActivated: false,
+                    isEdgeActivated: true,
 
                     text: 'When message received',
                     func: 'block_whenmessagereceived'
@@ -1125,7 +1133,12 @@ class TelegramBotExtension {
     }
 
     block_whenmessagereceived (args, util) {
-        return true;
+        // Edge-activated: return true once per message, then reset flag
+        if (this._messageFlag) {
+            this._messageFlag = false;
+            return true;
+        }
+        return false;
     }
 
     block_receivedmessageis (args, util) {
