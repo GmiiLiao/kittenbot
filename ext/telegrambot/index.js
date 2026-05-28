@@ -1085,7 +1085,13 @@ class TelegramBotExtension {
             this._pollingActive = false;
             this._pollOffset = 0;
             this.bot = { token };
-            return fetch(`${TELEGRAM_API}/bot${token}/getMe`)
+            // Step 1: Delete webhook (fix 409 Conflict – can't poll while webhook is active)
+            console.log('[TelegramBot] Deleting webhook...');
+            return fetch(`${TELEGRAM_API}/bot${token}/deleteWebhook?drop_pending_updates=false`)
+                .then(r => r.json())
+                .then(d => { console.log('[TelegramBot] deleteWebhook:', d.ok ? 'OK' : d.description); })
+                // Step 2: Verify bot
+                .then(() => fetch(`${TELEGRAM_API}/bot${token}/getMe`))
                 .then(r => r.json())
                 .then(json => {
                     if (json.ok && json.result.is_bot) {
