@@ -1,4 +1,4 @@
-/* 未來板 Lite AI (futureboard-lite-mpy, ESP32-S3) 板載 6軸IMU (SC7I22) 航向鎖定、編碼馬達 PID 小車與 PCA9685 舵機擴展插件
+/* 未來板 Lite AI (futureboard-lite-mpy, ESP32-S3) 板載 6軸IMU (SC7I22) + 雙編碼馬達差速航向鎖定與 PCA9685 舵機擴展插件
  * 支援：
  *   1. 線上即時互動模式 (透過未來板 Lite AI REPL 即時執行 MicroPython)
  *   2. MicroPython 程式碼生成與上傳模式 (掛載 board.gen.registerBlock，並標記 masterExt 避免代碼模式積木變灰)
@@ -11,25 +11,83 @@ const menuIconURI = 'data:image/svg+xml;utf8,' + encodeURIComponent(iconSvg);
 const MPY_HELPER_DEF = [
   "class _KBLiteImuCarHelper:",
   " def __init__(s):",
-  "  s.imu=s.motor=s.pca=None;s.lid,s.rid,s.ld,s.rd=1,2,-1,1;s.wc,s.ys=207.345,1.0;s.kp,s.ki,s.kd=8.0,0.05,1.2;s.ty=s.iy=s.le=0.0",
+  "  s.imu=s.motor=s.pca=s.pl=s.pr=None;s.lid,s.rid,s.ld,s.rd=1,2,-1,1",
+  "  s.wd,s.wc,s.ax,s.tg,s.ys,s.md=6.6,20.7345,14.2,1.0,1.0,0",
+  "  s.kp,s.ki,s.kd=8.0,0.05,1.2;s.ty=s.iy=s.le=s.ho=s.al=s.ar=s.dl0=s.dr0=0.0",
+  " def _w(s,d):return((float(d)+180.0)%360.0)-180.0",
   " def ensure_imu(s):",
   "  if s.imu is None:from sensor import IMU;s.imu=IMU()",
   "  return s.imu",
-  " def calibrate_imu(s):imu=s.ensure_imu();imu.calibrate();imu.reset_yaw();s.ty=s.iy=s.le=0.0",
-  " def reset_yaw(s):imu=s.ensure_imu();imu.reset_yaw();s.ty=s.iy=s.le=0.0",
-  " def get_yaw(s):imu=s.ensure_imu();imu.update();return round(float(imu.yaw())*s.ys,2)",
+  " def _rp(s):",
+  "  if s.motor is None:return None,None",
+  "  import time",
+  "  try:p1=s.motor.get_position(s.lid);time.sleep_ms(6);p2=s.motor.get_position(s.rid);time.sleep_ms(6);return p1,p2",
+  "  except Exception:return None,None",
+  " def _upd(s):",
+  "  try:",
+  "   p1,p2=s._rp()",
+  "   if p1 is not None:",
+  "    p1=float(p1)",
+  "    if s.pl is None:s.pl=p1",
+  "    dl=p1-s.pl",
+  "    if abs(dl)>180.0:dl=s._w(dl)",
+  "    s.pl=p1;s.al+=dl*s.ld",
+  "   if p2 is not None:",
+  "    p2=float(p2)",
+  "    if s.pr is None:s.pr=p2",
+  "    dr=p2-s.pr",
+  "    if abs(dr)>180.0:dr=s._w(dr)",
+  "    s.pr=p2;s.ar+=dr*s.rd",
+  "  except Exception:pass",
+  " def calibrate_imu(s):",
+  "  try:imu=s.ensure_imu();imu.calibrate();imu.reset_yaw()",
+  "  except Exception:pass",
+  "  s._upd();s.ho=s.al-s.ar;s.ty=s.iy=s.le=0.0",
+  " def reset_yaw(s):",
+  "  try:imu=s.ensure_imu();imu.reset_yaw()",
+  "  except Exception:pass",
+  "  s._upd();s.ho=s.al-s.ar;s.ty=s.iy=s.le=0.0",
+  " def reset_encoders(s):s._upd();s.dl0,s.dr0=s.al,s.ar",
+  " def get_imu_yaw(s):",
+  "  try:imu=s.ensure_imu();imu.update();return round(float(imu.yaw())*s.ys,2)",
+  "  except Exception:return 0.0",
+  " def get_enc_yaw(s,refresh=False):",
+  "  if refresh:s._upd()",
+  "  dn=2.0*(s.ax/s.wd)*s.tg",
+  "  return round(((s.al-s.ar)-s.ho)/dn,2) if dn>0 else 0.0",
+  " def get_yaw(s,refresh=False):",
+  "  if s.md==1:return s.get_enc_yaw(refresh)",
+  "  iy=s.get_imu_yaw()",
+  "  if s.md==2 and s.motor is not None:",
+  "   ey=s.get_enc_yaw(refresh);return round(0.75*iy+0.25*ey,2)",
+  "  return iy",
+  " def get_dist_cm(s,refresh=False):",
+  "  if refresh:s._upd()",
+  "  dl,dr=s.al-s.dl0,s.ar-s.dr0;return round((0.5*(dl+dr)/360.0)*s.wc,2)",
   " def get_angle(s,axis):",
   "  imu=s.ensure_imu();imu.update()",
   "  if axis=='pitch':return round(float(imu.pitch()),2)",
   "  if axis=='roll':return round(float(imu.roll()),2)",
   "  return round(float(imu.yaw())*s.ys,2)",
   " def get_gyro(s,idx):imu=s.ensure_imu();imu.update();return round(float(imu.read_gyroscope()[int(idx)]),2)",
-  " def init_car(s,uart_port='uart0',left_id=1,left_dir=-1,right_id=2,right_dir=1,wheel_d=66.0,yaw_sign=1.0):",
-  "  from machine import Pin;from encoderMotor import EncoderMotor;import math",
+  " def init_car(s,uart_port='uart0',left_id=1,left_dir=-1,right_id=2,right_dir=1,wheel_cm=6.6,axle_cm=14.2,turn_gain=1.0,yaw_sign=1.0,mode=0):",
+  "  from machine import Pin;from encoderMotor import EncoderMotor;import math,time",
   "  if uart_port=='uart0':Pin(43,Pin.IN,Pin.PULL_UP);Pin(44,Pin.OUT)",
-  "  s.motor=EncoderMotor(uart_port);s.lid,s.rid=int(left_id),int(right_id);s.ld,s.rd=int(left_dir),int(right_dir)",
-  "  s.wc=math.pi*float(wheel_d);s.ys=float(yaw_sign);s.calibrate_imu()",
-  " def set_pid(s,kp,ki,kd):s.kp,s.ki,s.kd=float(kp),float(ki),float(kd);s.iy=s.le=0.0",
+  "  s.motor=EncoderMotor(uart_port);s.lid,s.rid=int(left_id),int(right_id)",
+  "  s.ld=1 if int(left_dir)>=0 else -1;s.rd=1 if int(right_dir)>=0 else -1",
+  "  wd=float(wheel_cm);ax=float(axle_cm)",
+  "  if wd>20.0:wd/=10.0",
+  "  if ax>40.0:ax/=10.0",
+  "  s.wd=max(1.0,wd);s.wc=math.pi*s.wd;s.ax=max(1.0,ax);s.tg=max(0.1,float(turn_gain));s.ys=float(yaw_sign);s.md=int(mode)",
+  "  try:s.motor.set_mode(2);time.sleep_ms(8)",
+  "  except Exception:",
+  "   try:s.motor.set_mode(2,0xFD);time.sleep_ms(8)",
+  "   except Exception:pass",
+  "  s.pl=s.pr=None;s.al=s.ar=0.0;s._upd();s.calibrate_imu();s.reset_encoders()",
+  " def set_pid(s,kp,ki,kd,turn_gain=None):",
+  "  s.kp,s.ki,s.kd=float(kp),float(ki),float(kd)",
+  "  if turn_gain is not None:s.tg=max(0.1,float(turn_gain))",
+  "  s.iy=s.le=0.0",
   " def set_wheels(s,l_dps,r_dps):",
   "  if s.motor is None:return",
   "  import time;l=max(-480,min(480,int(l_dps)))*s.ld;r=max(-480,min(480,int(r_dps)))*s.rd",
@@ -37,33 +95,68 @@ const MPY_HELPER_DEF = [
   " def stop_car(s):",
   "  if s.motor is None:return",
   "  import time;s.motor.set_speed(s.lid,0,0);time.sleep_ms(5);s.motor.set_speed(s.rid,0,0)",
-  " def straight_step(s,speed_dps,target_yaw=0.0):",
-  "  er=float(target_yaw)-s.get_yaw();s.iy=max(-200.0,min(200.0,s.iy+er));dr=er-s.le;s.le=er",
-  "  c=s.kp*er+s.ki*s.iy+s.kd*dr;s.set_wheels(speed_dps-c,speed_dps+c)",
-  " def move_straight_time(s,target_yaw,speed_dps,duration_ms):",
-  "  import time;s.iy=s.le=0.0;t0=time.ticks_ms()",
-  "  try:",
-  "   while time.ticks_diff(time.ticks_ms(),t0)<int(duration_ms):s.straight_step(speed_dps,target_yaw);time.sleep_ms(20)",
-  "  finally:s.stop_car()",
-  " def move_straight_mm(s,target_yaw,distance_mm,speed_dps):",
-  "  d,sp=float(distance_mm),abs(float(speed_dps))",
+  " def straight_step(s,speed_dps=240,target_yaw=0.0):",
+  "  if s.md!=0:s._upd()",
+  "  er=float(target_yaw)-s.get_yaw(False);s.iy=max(-150.0,min(150.0,s.iy+er));dr=er-s.le;s.le=er",
+  "  c=s.kp*er+s.ki*s.iy+s.kd*dr;mc=max(60.0,abs(float(speed_dps))*0.65);c=max(-mc,min(mc,c))",
+  "  s.set_wheels(float(speed_dps)+c,float(speed_dps)-c)",
+  " def move_straight_cm(s,target_yaw,dist_cm,speed_dps=240):",
+  "  import time;d,sp=float(dist_cm),abs(float(speed_dps))",
   "  if d==0 or sp==0:return",
-  "  sd=sp if d>0 else -sp;ms=int((abs(d)/((sp/360.0)*s.wc))*1000.0);s.move_straight_time(target_yaw,sd,ms)",
-  " def turn_to_yaw(s,target_yaw,max_speed_dps=240,tol=1.0,timeout_ms=4000):",
-  "  import time;s.ty=float(target_yaw);ms=max(50,min(480,abs(int(max_speed_dps))));t0=time.ticks_ms();ok=0",
+  "  s.reset_encoders();s.iy=s.le=0.0;sd=sp if d>0 else -sp;ta=abs(d)",
+  "  p1,_=s._rp()",
+  "  if p1 is not None:",
+  "   try:",
+  "    while True:",
+  "     s._upd();rm=ta-abs(s.get_dist_cm(False))",
+  "     if rm<=0.2:break",
+  "     sc=min(1.0,max(0.35,rm/4.0));er=float(target_yaw)-s.get_yaw(False);s.iy=max(-150.0,min(150.0,s.iy+er));dr=er-s.le;s.le=er",
+  "     c=s.kp*er+s.ki*s.iy+s.kd*dr;bs=sd*sc;mc=max(60.0,abs(bs)*0.65);c=max(-mc,min(mc,c))",
+  "     s.set_wheels(bs+c,bs-c);time.sleep_ms(12)",
+  "   finally:s.stop_car();s._upd()",
+  "   return",
+  "  ms=int((ta/((sp/360.0)*s.wc))*1000.0);s.move_straight_time(target_yaw,sd,ms)",
+  " def move_straight_mm(s,target_yaw,distance_mm,speed_dps=240):",
+  "  s.move_straight_cm(target_yaw,float(distance_mm)/10.0,speed_dps)",
+  " def move_straight_sec(s,target_yaw,sec,speed_dps=240):",
+  "  s.move_straight_time(target_yaw,speed_dps,int(float(sec)*1000.0))",
+  " def move_straight_time(s,target_yaw,speed_dps,duration_ms):",
+  "  import time;s.reset_encoders();s.iy=s.le=0.0;t0=time.ticks_ms()",
+  "  try:",
+  "   while time.ticks_diff(time.ticks_ms(),t0)<int(duration_ms):s.straight_step(speed_dps,target_yaw);time.sleep_ms(15)",
+  "  finally:s.stop_car();s._upd()",
+  " def turn_to_yaw(s,target_yaw,max_speed_dps=220,tol=0.45,timeout_ms=5000):",
+  "  import time;s.ty=float(target_yaw);ms=max(55.0,min(480.0,abs(float(max_speed_dps))));t0=time.ticks_ms()",
+  "  if s.motor is not None:",
+  "   for _ in range(2):",
+  "    s._upd();er=s.ty-s.get_yaw(False)",
+  "    if abs(er)<=float(tol):break",
+  "    wdeg=int(round(abs(er)*(s.ax/s.wd)*s.tg))",
+  "    if wdeg<1:break",
+  "    sp=int(max(55.0,min(ms,abs(er)*4.5+35.0)));sgn=1 if er>0 else -1",
+  "    try:",
+  "     try:s.motor.set_mode(2);time.sleep_ms(5)",
+  "     except Exception:s.motor.set_mode(2,0xFD);time.sleep_ms(5)",
+  "     s.motor.set_position_speed(s.lid,wdeg*sgn*s.ld,sp);time.sleep_ms(6)",
+  "     s.motor.set_position_speed(s.rid,-wdeg*sgn*s.rd,sp)",
+  "     wt=int((wdeg/float(sp))*1000.0)+120;w0=time.ticks_ms()",
+  "     while time.ticks_diff(time.ticks_ms(),w0)<wt:s._upd();s.get_imu_yaw();time.sleep_ms(12)",
+  "    except Exception:break",
+  "  ok=0;le=0.0;it=0.0",
   "  try:",
   "   while time.ticks_diff(time.ticks_ms(),t0)<int(timeout_ms):",
-  "    er=s.ty-s.get_yaw()",
+  "    s._upd();er=s.ty-s.get_yaw(False);dr=er-le;le=er",
   "    if abs(er)<=float(tol):",
   "     s.stop_car();ok+=1",
-  "     if ok>=3:break",
+  "     if ok>=2:break",
   "    else:",
-  "     ok=0;sp=max(45,min(ms,int(5.0*abs(er))))",
-  "     if er>0:s.set_wheels(-sp,sp)",
-  "     else:s.set_wheels(sp,-sp)",
-  "    time.sleep_ms(20)",
-  "  finally:s.stop_car()",
-  " def turn_by_deg(s,delta_deg,max_speed_dps=240):s.turn_to_yaw(s.get_yaw()+float(delta_deg),max_speed_dps)",
+  "     ok=0;it=max(-30.0,min(30.0,it+er));sp=max(42.0,min(ms,abs(4.8*er+0.35*it+1.2*dr)))",
+  "     if er>0:s.set_wheels(sp,-sp)",
+  "     else:s.set_wheels(-sp,sp)",
+  "    time.sleep_ms(12)",
+  "  finally:s.stop_car();s._upd()",
+  " def turn_by_deg(s,delta_deg,max_speed_dps=220):",
+  "  s._upd();s.turn_to_yaw(s.get_yaw(False)+float(delta_deg),max_speed_dps)",
   " def _ep(s,addr=0x40):",
   "  if s.pca is not None:return s.pca",
   "  import board,time,math;from machine import I2C,SoftI2C,Pin;bus=None",
@@ -187,7 +280,7 @@ class FutureLiteImuCarExtension {
     if (!gen || this._hookedGens.has(gen)) return;
     this._hookedGens.add(gen);
 
-    const menus = ['UART_PORT', 'MOTOR_ID', 'DIR_SIGN', 'YAW_SIGN_MENU', 'ANGLE_AXIS', 'GYRO_AXIS', 'PCA_CH'];
+    const menus = ['UART_PORT', 'MOTOR_ID', 'DIR_SIGN', 'YAW_SIGN_MENU', 'LITE_HEADING_MODE', 'ANGLE_AXIS', 'GYRO_AXIS', 'PCA_CH'];
     menus.forEach((m) => {
       if (gen.registerBlock && gen.dropdownToCode) {
         gen.registerBlock(`${EXT_ID}_menu_${m}`, gen.dropdownToCode.bind(gen));
@@ -214,7 +307,10 @@ class FutureLiteImuCarExtension {
 
     regCmd('imuInitCalibrate', () => `_kb_lite_car.calibrate_imu()`);
     regCmd('imuResetYaw', () => `_kb_lite_car.reset_yaw()`);
-    regRep('imuGetYaw', () => `_kb_lite_car.get_yaw()`);
+    regCmd('carResetEncoders', () => `_kb_lite_car.reset_encoders()`);
+    regRep('imuGetYaw', () => `_kb_lite_car.get_yaw(True)`);
+    regRep('carGetEncYaw', () => `_kb_lite_car.get_enc_yaw(True)`);
+    regRep('carGetDistCm', () => `_kb_lite_car.get_dist_cm(True)`);
     regRep('imuGetAngle', (g, b) => {
       const axis = this._cleanStr(this._getArg(g, b, 'AXIS', 'yaw'), 'yaw');
       return `_kb_lite_car.get_angle('${axis}')`;
@@ -230,15 +326,31 @@ class FutureLiteImuCarExtension {
       const ldir = this._getArg(g, b, 'LEFT_DIR', '-1');
       const rid = this._getArg(g, b, 'RIGHT_ID', '2');
       const rdir = this._getArg(g, b, 'RIGHT_DIR', '1');
-      const wd = this._getArg(g, b, 'WHEEL_D', '66');
+      const wd = this._getArg(g, b, 'WHEEL_CM', this._getArg(g, b, 'WHEEL_D', '6.6'));
+      const ax = this._getArg(g, b, 'AXLE_CM', '14.2');
+      const tg = this._getArg(g, b, 'TURN_GAIN', '1.0');
       const ys = this._getArg(g, b, 'YAW_SIGN', '1');
-      return `_kb_lite_car.init_car('${uart}', ${lid}, ${ldir}, ${rid}, ${rdir}, ${wd}, ${ys})`;
+      const md = this._getArg(g, b, 'MODE', '0');
+      return `_kb_lite_car.init_car('${uart}', ${lid}, ${ldir}, ${rid}, ${rdir}, ${wd}, ${ax}, ${tg}, ${ys}, ${md})`;
     });
     regCmd('carSetPid', (g, b) => {
       const kp = this._getArg(g, b, 'KP', '8.0');
       const ki = this._getArg(g, b, 'KI', '0.05');
       const kd = this._getArg(g, b, 'KD', '1.2');
-      return `_kb_lite_car.set_pid(${kp}, ${ki}, ${kd})`;
+      const tg = this._getArg(g, b, 'TURN_GAIN', '1.0');
+      return `_kb_lite_car.set_pid(${kp}, ${ki}, ${kd}, ${tg})`;
+    });
+    regCmd('carMoveStraightCm', (g, b) => {
+      const yaw = this._getArg(g, b, 'YAW', '0');
+      const cm = this._getArg(g, b, 'CM', '20');
+      const spd = this._getArg(g, b, 'SPEED', '240');
+      return `_kb_lite_car.move_straight_cm(${yaw}, ${cm}, ${spd})`;
+    });
+    regCmd('carMoveStraightSec', (g, b) => {
+      const yaw = this._getArg(g, b, 'YAW', '0');
+      const sec = this._getArg(g, b, 'SEC', '2');
+      const spd = this._getArg(g, b, 'SPEED', '240');
+      return `_kb_lite_car.move_straight_sec(${yaw}, ${sec}, ${spd})`;
     });
     regCmd('carMoveStraightMm', (g, b) => {
       const yaw = this._getArg(g, b, 'YAW', '0');
@@ -364,7 +476,7 @@ class FutureLiteImuCarExtension {
         {
           func: 'noop',
           blockType: 'divlabel',
-          text: '1. 未來板Lite AI 板載 6軸IMU 航向角 (SC7I22)'
+          text: '1. 未來板Lite AI 板載 6軸IMU 與航向基準 (SC7I22)'
         },
         {
           opcode: 'imuInitCalibrate',
@@ -374,12 +486,27 @@ class FutureLiteImuCarExtension {
         {
           opcode: 'imuResetYaw',
           blockType: 'command',
-          text: '將目前車頭方向設為 0° (重置航向角)'
+          text: '將目前車頭方向設為 0° (重置航向角基準)'
+        },
+        {
+          opcode: 'carResetEncoders',
+          blockType: 'command',
+          text: '重置行駛距離里程起點為 0 cm'
         },
         {
           opcode: 'imuGetYaw',
           blockType: 'reporter',
-          text: '目前航向角 Yaw (°)'
+          text: '目前主航向角 Yaw (°)'
+        },
+        {
+          opcode: 'carGetEncYaw',
+          blockType: 'reporter',
+          text: '雙輪編碼器差速推算航向角 (°)'
+        },
+        {
+          opcode: 'carGetDistCm',
+          blockType: 'reporter',
+          text: '目前已行駛距離 (cm)'
         },
         {
           opcode: 'imuGetAngle',
@@ -414,25 +541,49 @@ class FutureLiteImuCarExtension {
         {
           opcode: 'carInit',
           blockType: 'command',
-          text: '初始化 航向小車 串口[UART] 左輪ID[LEFT_ID]方向[LEFT_DIR] 右輪ID[RIGHT_ID]方向[RIGHT_DIR] 輪徑[WHEEL_D]mm 航向極性[YAW_SIGN]',
+          text: '初始化 航向小車 串口[UART] 左輪ID[LEFT_ID]方向[LEFT_DIR] 右輪ID[RIGHT_ID]方向[RIGHT_DIR] 輪徑[WHEEL_CM]cm 輪距[AXLE_CM]cm 轉向係數[TURN_GAIN] 航向極性[YAW_SIGN] 感應模式[MODE]',
           arguments: {
             UART: { type: 'string', menu: 'UART_PORT', defaultValue: 'uart0' },
             LEFT_ID: { type: 'string', menu: 'MOTOR_ID', defaultValue: '1' },
             LEFT_DIR: { type: 'string', menu: 'DIR_SIGN', defaultValue: '-1' },
             RIGHT_ID: { type: 'string', menu: 'MOTOR_ID', defaultValue: '2' },
             RIGHT_DIR: { type: 'string', menu: 'DIR_SIGN', defaultValue: '1' },
-            WHEEL_D: { type: 'number', defaultValue: 66 },
-            YAW_SIGN: { type: 'string', menu: 'YAW_SIGN_MENU', defaultValue: '1' }
+            WHEEL_CM: { type: 'number', defaultValue: 6.6 },
+            AXLE_CM: { type: 'number', defaultValue: 14.2 },
+            TURN_GAIN: { type: 'number', defaultValue: 1.0 },
+            YAW_SIGN: { type: 'string', menu: 'YAW_SIGN_MENU', defaultValue: '1' },
+            MODE: { type: 'string', menu: 'LITE_HEADING_MODE', defaultValue: '0' }
           }
         },
         {
           opcode: 'carSetPid',
           blockType: 'command',
-          text: '設定直線鎖定 PID 參數 Kp[KP] Ki[KI] Kd[KD]',
+          text: '設定控制參數 航向Kp[KP] Ki[KI] Kd[KD] 轉向係數[TURN_GAIN]',
           arguments: {
             KP: { type: 'number', defaultValue: 8.0 },
             KI: { type: 'number', defaultValue: 0.05 },
-            KD: { type: 'number', defaultValue: 1.2 }
+            KD: { type: 'number', defaultValue: 1.2 },
+            TURN_GAIN: { type: 'number', defaultValue: 1.0 }
+          }
+        },
+        {
+          opcode: 'carMoveStraightCm',
+          blockType: 'command',
+          text: '鎖定航向 [YAW]° 直線行駛 距離 [CM] cm 速度 [SPEED] 度/秒(deg/s)',
+          arguments: {
+            YAW: { type: 'number', defaultValue: 0 },
+            CM: { type: 'number', defaultValue: 20 },
+            SPEED: { type: 'number', defaultValue: 240 }
+          }
+        },
+        {
+          opcode: 'carMoveStraightSec',
+          blockType: 'command',
+          text: '鎖定航向 [YAW]° 直線行駛 時間 [SEC] 秒 速度 [SPEED] 度/秒(deg/s)',
+          arguments: {
+            YAW: { type: 'number', defaultValue: 0 },
+            SEC: { type: 'number', defaultValue: 2 },
+            SPEED: { type: 'number', defaultValue: 240 }
           }
         },
         {
@@ -441,7 +592,7 @@ class FutureLiteImuCarExtension {
           text: '鎖定航向 [YAW]° 直線行駛 距離 [DIST] mm 速度 [SPEED] 度/秒',
           arguments: {
             YAW: { type: 'number', defaultValue: 0 },
-            DIST: { type: 'number', defaultValue: 300 },
+            DIST: { type: 'number', defaultValue: 200 },
             SPEED: { type: 'number', defaultValue: 240 }
           }
         },
@@ -467,7 +618,7 @@ class FutureLiteImuCarExtension {
         {
           opcode: 'carTurnToYaw',
           blockType: 'command',
-          text: '陀螺儀精準轉向至 絕對航向 [YAW]° 最大速度 [SPEED] 度/秒',
+          text: '精準原地轉向至 絕對航向 [YAW]° 最大速度 [SPEED] 度/秒',
           arguments: {
             YAW: { type: 'number', defaultValue: 90 },
             SPEED: { type: 'number', defaultValue: 220 }
@@ -476,7 +627,7 @@ class FutureLiteImuCarExtension {
         {
           opcode: 'carTurnByDeg',
           blockType: 'command',
-          text: '陀螺儀精準原地旋轉 相對角度 [DEG]° 最大速度 [SPEED] 度/秒',
+          text: '精準原地旋轉 相對角度 [DEG]° 最大速度 [SPEED] 度/秒',
           arguments: {
             DEG: { type: 'number', defaultValue: 90 },
             SPEED: { type: 'number', defaultValue: 220 }
@@ -522,8 +673,8 @@ class FutureLiteImuCarExtension {
         MOTOR_ID: {
           acceptReporters: true,
           items: [
-            { text: 'ID 1', value: '1' },
-            { text: 'ID 2', value: '2' },
+            { text: 'ID 1 (編碼馬達1)', value: '1' },
+            { text: 'ID 2 (編碼馬達2)', value: '2' },
             { text: 'ID 3', value: '3' },
             { text: 'ID 4', value: '4' },
             { text: 'ID 5', value: '5' },
@@ -544,6 +695,14 @@ class FutureLiteImuCarExtension {
           items: [
             { text: '正向 (+1)', value: '1' },
             { text: '反向 (-1)', value: '-1' }
+          ]
+        },
+        LITE_HEADING_MODE: {
+          acceptReporters: true,
+          items: [
+            { text: '板載6軸IMU陀螺儀 + 編碼馬達硬體位置精準轉向 (預設推薦)', value: '0' },
+            { text: '零飄移雙輪編碼器差速航向 (與方糖盒相同)', value: '1' },
+            { text: '6軸IMU陀螺儀 + 雙輪編碼器雙重融合航向', value: '2' }
           ]
         },
         ANGLE_AXIS: {
@@ -575,22 +734,40 @@ class FutureLiteImuCarExtension {
 
   imuInitCalibrate() { return this._execRepl('_kb_lite_car.calibrate_imu()'); }
   imuResetYaw() { return this._execRepl('_kb_lite_car.reset_yaw()'); }
-  imuGetYaw() { return this._execRepl('_kb_lite_car.get_yaw()', true); }
+  carResetEncoders() { return this._execRepl('_kb_lite_car.reset_encoders()'); }
+  imuGetYaw() { return this._execRepl('_kb_lite_car.get_yaw(True)', true); }
+  carGetEncYaw() { return this._execRepl('_kb_lite_car.get_enc_yaw(True)', true); }
+  carGetDistCm() { return this._execRepl('_kb_lite_car.get_dist_cm(True)', true); }
   imuGetAngle(args) { return this._execRepl(`_kb_lite_car.get_angle('${(args && args.AXIS) || 'yaw'}')`, true); }
   imuGetGyro(args) { return this._execRepl(`_kb_lite_car.get_gyro(${Number((args && args.AXIS) || 2)})`, true); }
 
   carInit(args) {
+    const wd = Number((args && (args.WHEEL_CM ?? args.WHEEL_D)) || 6.6);
+    const ax = Number((args && args.AXLE_CM) || 14.2);
+    const tg = Number((args && args.TURN_GAIN) || 1.0);
+    const ys = Number((args && args.YAW_SIGN) || 1);
+    const md = Number((args && args.MODE) ?? 0);
     return this._execRepl(
-      `_kb_lite_car.init_car('${(args && args.UART) || 'uart0'}', ${Number((args && args.LEFT_ID) || 1)}, ${Number((args && args.LEFT_DIR) || -1)}, ${Number((args && args.RIGHT_ID) || 2)}, ${Number((args && args.RIGHT_DIR) || 1)}, ${Number((args && args.WHEEL_D) || 66)}, ${Number((args && args.YAW_SIGN) || 1)})`,
+      `_kb_lite_car.init_car('${(args && args.UART) || 'uart0'}', ${Number((args && args.LEFT_ID) || 1)}, ${Number((args && args.LEFT_DIR) || -1)}, ${Number((args && args.RIGHT_ID) || 2)}, ${Number((args && args.RIGHT_DIR) || 1)}, ${wd}, ${ax}, ${tg}, ${ys}, ${md})`,
       false,
       6000
     );
   }
   carSetPid(args) {
-    return this._execRepl(`_kb_lite_car.set_pid(${Number((args && args.KP) || 8)}, ${Number((args && args.KI) || 0.05)}, ${Number((args && args.KD) || 1.2)})`);
+    return this._execRepl(`_kb_lite_car.set_pid(${Number((args && args.KP) || 8)}, ${Number((args && args.KI) || 0.05)}, ${Number((args && args.KD) || 1.2)}, ${Number((args && args.TURN_GAIN) || 1.0)})`);
+  }
+  carMoveStraightCm(args) {
+    const cm = Number((args && args.CM) || 20);
+    const spd = Math.max(20, Math.abs(Number((args && args.SPEED) || 240)));
+    const estMs = Math.ceil((Math.abs(cm) / ((spd / 360) * 20.7)) * 1000) + 3500;
+    return this._execRepl(`_kb_lite_car.move_straight_cm(${Number((args && args.YAW) || 0)}, ${cm}, ${spd})`, false, estMs);
+  }
+  carMoveStraightSec(args) {
+    const sec = Number((args && args.SEC) || 2);
+    return this._execRepl(`_kb_lite_car.move_straight_sec(${Number((args && args.YAW) || 0)}, ${sec}, ${Number((args && args.SPEED) || 240)})`, false, Math.ceil(sec * 1000) + 3000);
   }
   carMoveStraightMm(args) {
-    const dist = Number((args && args.DIST) || 300);
+    const dist = Number((args && args.DIST) || 200);
     const spd = Math.max(10, Math.abs(Number((args && args.SPEED) || 240)));
     const estMs = Math.ceil((Math.abs(dist) / ((spd / 360) * 207)) * 1000) + 3000;
     return this._execRepl(`_kb_lite_car.move_straight_mm(${Number((args && args.YAW) || 0)}, ${dist}, ${spd})`, false, estMs);

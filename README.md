@@ -26,7 +26,7 @@
 
 ---
 
-### 2. LiteAI航向車控 (`futureLiteImuCar` v1.3.0)
+### 2. LiteAI航向車控 (`futureLiteImuCar` v1.5.0)
 適用：未來板 Lite AI (`ESP32-S3`) 板載 6 軸 IMU (`SC7I22 @ 0x19`) 航向角鎖定、編碼馬達 PID 直線/轉向與 `PCA9685` 16 路舵機控制。
 
 - **可用網址 A (GitHub Raw 直連，推薦)**：
