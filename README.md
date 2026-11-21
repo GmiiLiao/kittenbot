@@ -44,8 +44,8 @@
 
 ---
 
-### 3. TelegramBot (`TelegramBot` v1.0.0)
-適用：`kblock.kittenbot.cc` 線上 Telegram 機器人訊息與媒體收發控制。
+### 3. TelegramBot (`TelegramBot` v1.1.0 - 支援電腦舞台 + 主控板 MicroPython 代碼生成)
+適用：`kblock.kittenbot.cc` 線上舞台模式 **與** 未來板／未來板 Lite AI 主控板（MicroPython 代碼生成與上傳，透過 Wi-Fi 直連 Telegram Bot API）。
 
 - **可用網址 A (GitHub Raw 直連，推薦)**：
   ```text
