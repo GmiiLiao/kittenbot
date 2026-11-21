@@ -1,0 +1,19 @@
+{
+  "id": "futureLiteImuCar",
+  "name": "LiteAI航向車控",
+  "extensionId": "futureLiteImuCar",
+  "version": "1.3.0",
+  "describe": "未來板Lite AI 板載6軸IMU航向角鎖定、編碼馬達PID直線/轉向與PCA9685舵機",
+  "type": "scratch3",
+  "image": "icon.png",
+  "color1": "#00B4D8",
+  "color2": "#0096C7",
+  "color3": "#0077B6",
+  "tags": [
+    "device",
+    "sensor",
+    "actuator"
+  ],
+  "weights": 690,
+  "examples": []
+}
