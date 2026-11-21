@@ -1,190 +1,265 @@
 /* 未來板 Lite AI (futureboard-lite-mpy, ESP32-S3) 板載 6軸IMU (SC7I22) + 雙編碼馬達差速航向鎖定與 PCA9685 舵機擴展插件
  * 支援：
  *   1. 線上即時互動模式 (透過未來板 Lite AI REPL 即時執行 MicroPython)
- *   2. MicroPython 程式碼生成與上傳模式 (掛載 board.gen.registerBlock，並標記 masterExt 避免代碼模式積木變灰)
+ *   2. MicroPython 按需精簡程式碼生成與上傳模式 (只輸出有用到的函式，節省主控器空間，並標記 masterExt 避免代碼模式積木變灰)
  */
 const EXT_ID = 'futureLiteImuCar';
 
 const iconSvg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128"><rect width="128" height="128" rx="24" fill="#0077B6"/><circle cx="64" cy="64" r="44" fill="#0A192F" stroke="#00E5FF" stroke-width="6"/><polygon points="64,22 50,78 64,68 78,78" fill="#FFD60A"/><circle cx="64" cy="64" r="6" fill="#FFFFFF"/></svg>';
 const menuIconURI = 'data:image/svg+xml;utf8,' + encodeURIComponent(iconSvg);
 
-const MPY_HELPER_DEF = [
+const MPY_HEADER = [
   "class _KBLiteImuCarHelper:",
   " def __init__(s):",
   "  s.imu=s.motor=s.pca=s.pl=s.pr=None;s.lid,s.rid,s.ld,s.rd=1,2,-1,1",
   "  s.wd,s.wc,s.ax,s.tg,s.ys,s.md=6.6,20.7345,14.2,1.0,1.0,0",
-  "  s.kp,s.ki,s.kd=8.0,0.05,1.2;s.ty=s.iy=s.le=s.ho=s.al=s.ar=s.dl0=s.dr0=0.0",
-  " def _w(s,d):return((float(d)+180.0)%360.0)-180.0",
-  " def ensure_imu(s):",
-  "  if s.imu is None:from sensor import IMU;s.imu=IMU()",
-  "  return s.imu",
-  " def _rp(s):",
-  "  if s.motor is None:return None,None",
-  "  import time",
-  "  try:p1=s.motor.get_position(s.lid);time.sleep_ms(6);p2=s.motor.get_position(s.rid);time.sleep_ms(6);return p1,p2",
-  "  except Exception:return None,None",
-  " def _upd(s):",
-  "  try:",
-  "   p1,p2=s._rp()",
-  "   if p1 is not None:",
-  "    p1=float(p1)",
-  "    if s.pl is None:s.pl=p1",
-  "    dl=p1-s.pl",
-  "    if abs(dl)>180.0:dl=s._w(dl)",
-  "    s.pl=p1;s.al+=dl*s.ld",
-  "   if p2 is not None:",
-  "    p2=float(p2)",
-  "    if s.pr is None:s.pr=p2",
-  "    dr=p2-s.pr",
-  "    if abs(dr)>180.0:dr=s._w(dr)",
-  "    s.pr=p2;s.ar+=dr*s.rd",
-  "  except Exception:pass",
-  " def calibrate_imu(s):",
-  "  try:imu=s.ensure_imu();imu.calibrate();imu.reset_yaw()",
-  "  except Exception:pass",
-  "  s._upd();s.ho=s.al-s.ar;s.ty=s.iy=s.le=0.0",
-  " def reset_yaw(s):",
-  "  try:imu=s.ensure_imu();imu.reset_yaw()",
-  "  except Exception:pass",
-  "  s._upd();s.ho=s.al-s.ar;s.ty=s.iy=s.le=0.0",
-  " def reset_encoders(s):s._upd();s.dl0,s.dr0=s.al,s.ar",
-  " def get_imu_yaw(s):",
-  "  try:imu=s.ensure_imu();imu.update();return round(float(imu.yaw())*s.ys,2)",
-  "  except Exception:return 0.0",
-  " def get_enc_yaw(s,refresh=False):",
-  "  if refresh:s._upd()",
-  "  dn=2.0*(s.ax/s.wd)*s.tg",
-  "  return round(((s.al-s.ar)-s.ho)/dn,2) if dn>0 else 0.0",
-  " def get_yaw(s,refresh=False):",
-  "  if s.md==1:return s.get_enc_yaw(refresh)",
-  "  iy=s.get_imu_yaw()",
-  "  if s.md==2 and s.motor is not None:",
-  "   ey=s.get_enc_yaw(refresh);return round(0.75*iy+0.25*ey,2)",
-  "  return iy",
-  " def get_dist_cm(s,refresh=False):",
-  "  if refresh:s._upd()",
-  "  dl,dr=s.al-s.dl0,s.ar-s.dr0;return round((0.5*(dl+dr)/360.0)*s.wc,2)",
-  " def get_angle(s,axis):",
-  "  imu=s.ensure_imu();imu.update()",
-  "  if axis=='pitch':return round(float(imu.pitch()),2)",
-  "  if axis=='roll':return round(float(imu.roll()),2)",
-  "  return round(float(imu.yaw())*s.ys,2)",
-  " def get_gyro(s,idx):imu=s.ensure_imu();imu.update();return round(float(imu.read_gyroscope()[int(idx)]),2)",
-  " def init_car(s,uart_port='uart0',left_id=1,left_dir=-1,right_id=2,right_dir=1,wheel_cm=6.6,axle_cm=14.2,turn_gain=1.0,yaw_sign=1.0,mode=0):",
-  "  from machine import Pin;from encoderMotor import EncoderMotor;import math,time",
-  "  if uart_port=='uart0':Pin(43,Pin.IN,Pin.PULL_UP);Pin(44,Pin.OUT)",
-  "  s.motor=EncoderMotor(uart_port);s.lid,s.rid=int(left_id),int(right_id)",
-  "  s.ld=1 if int(left_dir)>=0 else -1;s.rd=1 if int(right_dir)>=0 else -1",
-  "  wd=float(wheel_cm);ax=float(axle_cm)",
-  "  if wd>20.0:wd/=10.0",
-  "  if ax>40.0:ax/=10.0",
-  "  s.wd=max(1.0,wd);s.wc=math.pi*s.wd;s.ax=max(1.0,ax);s.tg=max(0.1,float(turn_gain));s.ys=float(yaw_sign);s.md=int(mode)",
-  "  try:s.motor.set_mode(2);time.sleep_ms(8)",
-  "  except Exception:",
-  "   try:s.motor.set_mode(2,0xFD);time.sleep_ms(8)",
-  "   except Exception:pass",
-  "  s.pl=s.pr=None;s.al=s.ar=0.0;s._upd();s.calibrate_imu();s.reset_encoders()",
-  " def set_pid(s,kp,ki,kd,turn_gain=None):",
-  "  s.kp,s.ki,s.kd=float(kp),float(ki),float(kd)",
-  "  if turn_gain is not None:s.tg=max(0.1,float(turn_gain))",
-  "  s.iy=s.le=0.0",
-  " def set_wheels(s,l_dps,r_dps):",
-  "  if s.motor is None:return",
-  "  import time;l=max(-480,min(480,int(l_dps)))*s.ld;r=max(-480,min(480,int(r_dps)))*s.rd",
-  "  s.motor.set_speed(s.lid,l,0);time.sleep_ms(5);s.motor.set_speed(s.rid,r,0)",
-  " def stop_car(s):",
-  "  if s.motor is None:return",
-  "  import time;s.motor.set_speed(s.lid,0,0);time.sleep_ms(5);s.motor.set_speed(s.rid,0,0)",
-  " def straight_step(s,speed_dps=240,target_yaw=0.0):",
-  "  if s.md!=0:s._upd()",
-  "  er=float(target_yaw)-s.get_yaw(False);s.iy=max(-150.0,min(150.0,s.iy+er));dr=er-s.le;s.le=er",
-  "  c=s.kp*er+s.ki*s.iy+s.kd*dr;mc=max(60.0,abs(float(speed_dps))*0.65);c=max(-mc,min(mc,c))",
-  "  s.set_wheels(float(speed_dps)+c,float(speed_dps)-c)",
-  " def move_straight_cm(s,target_yaw,dist_cm,speed_dps=240):",
-  "  import time;d,sp=float(dist_cm),abs(float(speed_dps))",
-  "  if d==0 or sp==0:return",
-  "  s.reset_encoders();s.iy=s.le=0.0;sd=sp if d>0 else -sp;ta=abs(d)",
-  "  p1,_=s._rp()",
-  "  if p1 is not None:",
-  "   try:",
-  "    while True:",
-  "     s._upd();rm=ta-abs(s.get_dist_cm(False))",
-  "     if rm<=0.2:break",
-  "     sc=min(1.0,max(0.35,rm/4.0));er=float(target_yaw)-s.get_yaw(False);s.iy=max(-150.0,min(150.0,s.iy+er));dr=er-s.le;s.le=er",
-  "     c=s.kp*er+s.ki*s.iy+s.kd*dr;bs=sd*sc;mc=max(60.0,abs(bs)*0.65);c=max(-mc,min(mc,c))",
-  "     s.set_wheels(bs+c,bs-c);time.sleep_ms(12)",
-  "   finally:s.stop_car();s._upd()",
-  "   return",
-  "  ms=int((ta/((sp/360.0)*s.wc))*1000.0);s.move_straight_time(target_yaw,sd,ms)",
-  " def move_straight_mm(s,target_yaw,distance_mm,speed_dps=240):",
-  "  s.move_straight_cm(target_yaw,float(distance_mm)/10.0,speed_dps)",
-  " def move_straight_sec(s,target_yaw,sec,speed_dps=240):",
-  "  s.move_straight_time(target_yaw,speed_dps,int(float(sec)*1000.0))",
-  " def move_straight_time(s,target_yaw,speed_dps,duration_ms):",
-  "  import time;s.reset_encoders();s.iy=s.le=0.0;t0=time.ticks_ms()",
-  "  try:",
-  "   while time.ticks_diff(time.ticks_ms(),t0)<int(duration_ms):s.straight_step(speed_dps,target_yaw);time.sleep_ms(15)",
-  "  finally:s.stop_car();s._upd()",
-  " def turn_to_yaw(s,target_yaw,max_speed_dps=220,tol=0.45,timeout_ms=5000):",
-  "  import time;s.ty=float(target_yaw);ms=max(55.0,min(480.0,abs(float(max_speed_dps))));t0=time.ticks_ms()",
-  "  if s.motor is not None:",
-  "   for _ in range(2):",
-  "    s._upd();er=s.ty-s.get_yaw(False)",
-  "    if abs(er)<=float(tol):break",
-  "    wdeg=int(round(abs(er)*(s.ax/s.wd)*s.tg))",
-  "    if wdeg<1:break",
-  "    sp=int(max(55.0,min(ms,abs(er)*4.5+35.0)));sgn=1 if er>0 else -1",
-  "    try:",
-  "     try:s.motor.set_mode(2);time.sleep_ms(5)",
-  "     except Exception:s.motor.set_mode(2,0xFD);time.sleep_ms(5)",
-  "     s.motor.set_position_speed(s.lid,wdeg*sgn*s.ld,sp);time.sleep_ms(6)",
-  "     s.motor.set_position_speed(s.rid,-wdeg*sgn*s.rd,sp)",
-  "     wt=int((wdeg/float(sp))*1000.0)+120;w0=time.ticks_ms()",
-  "     while time.ticks_diff(time.ticks_ms(),w0)<wt:s._upd();s.get_imu_yaw();time.sleep_ms(12)",
-  "    except Exception:break",
-  "  ok=0;le=0.0;it=0.0",
-  "  try:",
-  "   while time.ticks_diff(time.ticks_ms(),t0)<int(timeout_ms):",
-  "    s._upd();er=s.ty-s.get_yaw(False);dr=er-le;le=er",
-  "    if abs(er)<=float(tol):",
-  "     s.stop_car();ok+=1",
-  "     if ok>=2:break",
-  "    else:",
-  "     ok=0;it=max(-30.0,min(30.0,it+er));sp=max(42.0,min(ms,abs(4.8*er+0.35*it+1.2*dr)))",
-  "     if er>0:s.set_wheels(sp,-sp)",
-  "     else:s.set_wheels(-sp,sp)",
-  "    time.sleep_ms(12)",
-  "  finally:s.stop_car();s._upd()",
-  " def turn_by_deg(s,delta_deg,max_speed_dps=220):",
-  "  s._upd();s.turn_to_yaw(s.get_yaw(False)+float(delta_deg),max_speed_dps)",
-  " def _ep(s,addr=0x40):",
-  "  if s.pca is not None:return s.pca",
-  "  import board,time,math;from machine import I2C,SoftI2C,Pin;bus=None",
-  "  try:",
-  "   hw=I2C(0,scl=Pin(1),sda=Pin(2),freq=100000);board.i2c=hw",
-  "   if addr in hw.scan():bus=hw",
-  "  except Exception:pass",
-  "  if bus is None:",
-  "   sw=SoftI2C(scl=Pin(2),sda=Pin(1),freq=100000)",
-  "   if addr in sw.scan():bus=sw",
-  "  if bus is None:raise OSError('PCA9685 0x40 not found')",
-  "  for b in ((0,0),(1,4),(0,1)):bus.writeto(addr,bytearray(b))",
-  "  time.sleep_ms(5);bus.writeto(addr,bytearray([0]));m1=bus.readfrom(addr,1)[0]&~0x10;bus.writeto(addr,bytearray([0,m1]));time.sleep_ms(5)",
-  "  ps=int(math.floor(25000000.0/4096.0/50.0-0.5))",
-  "  for b in ((0,(m1&0x7F)|0x10),(0xFE,ps),(0,m1)):bus.writeto(addr,bytearray(b))",
-  "  time.sleep_ms(5);bus.writeto(addr,bytearray([0,m1|0x80]));s.pca=bus;return bus",
-  " def pca_set_pwm(s,ch,on,off,addr=0x40):",
-  "  bus=s._ep(addr);b=0x06+4*int(ch)",
-  "  for k,v in ((b,on&0xFF),(b+1,on>>8),(b+2,off&0xFF),(b+3,off>>8)):bus.writeto(addr,bytearray([k,v]))",
-  " def pca_servo180(s,ch,deg):",
-  "  d=max(0.0,min(180.0,float(deg)));tk=int((500.0+(2000.0*d/180.0))*4096.0/20000.0)",
-  "  try:s.pca_set_pwm(ch,0,tk)",
-  "  except OSError:s.pca=None;s.pca_set_pwm(ch,0,tk)",
-  " def pca_release(s,ch):",
-  "  try:s.pca_set_pwm(ch,0,0)",
-  "  except OSError:s.pca=None",
-  "_kb_lite_car=_KBLiteImuCarHelper()"
-].join('\n');
+  "  s.kp,s.ki,s.kd=8.0,0.05,1.2;s.ty=s.iy=s.le=s.ho=s.al=s.ar=s.dl0=s.dr0=0.0"
+];
+const MPY_FOOTER = ["_kb_lite_car=_KBLiteImuCarHelper()"];
+const MPY_METHODS = {
+  _w: { deps: [], code: [
+    " def _w(s,d):return((float(d)+180.0)%360.0)-180.0"
+  ]},
+  ensure_imu: { deps: [], code: [
+    " def ensure_imu(s):",
+    "  if s.imu is None:from sensor import IMU;s.imu=IMU()",
+    "  return s.imu"
+  ]},
+  _rp: { deps: [], code: [
+    " def _rp(s):",
+    "  if s.motor is None:return None,None",
+    "  import time",
+    "  try:p1=s.motor.get_position(s.lid);time.sleep_ms(6);p2=s.motor.get_position(s.rid);time.sleep_ms(6);return p1,p2",
+    "  except Exception:return None,None"
+  ]},
+  _upd: { deps: ['_rp', '_w'], code: [
+    " def _upd(s):",
+    "  try:",
+    "   p1,p2=s._rp()",
+    "   if p1 is not None:",
+    "    p1=float(p1)",
+    "    if s.pl is None:s.pl=p1",
+    "    dl=p1-s.pl",
+    "    if abs(dl)>180.0:dl=s._w(dl)",
+    "    s.pl=p1;s.al+=dl*s.ld",
+    "   if p2 is not None:",
+    "    p2=float(p2)",
+    "    if s.pr is None:s.pr=p2",
+    "    dr=p2-s.pr",
+    "    if abs(dr)>180.0:dr=s._w(dr)",
+    "    s.pr=p2;s.ar+=dr*s.rd",
+    "  except Exception:pass"
+  ]},
+  calibrate_imu: { deps: ['ensure_imu', '_upd'], code: [
+    " def calibrate_imu(s):",
+    "  try:imu=s.ensure_imu();imu.calibrate();imu.reset_yaw()",
+    "  except Exception:pass",
+    "  s._upd();s.ho=s.al-s.ar;s.ty=s.iy=s.le=0.0"
+  ]},
+  reset_yaw: { deps: ['ensure_imu', '_upd'], code: [
+    " def reset_yaw(s):",
+    "  try:imu=s.ensure_imu();imu.reset_yaw()",
+    "  except Exception:pass",
+    "  s._upd();s.ho=s.al-s.ar;s.ty=s.iy=s.le=0.0"
+  ]},
+  reset_encoders: { deps: ['_upd'], code: [
+    " def reset_encoders(s):s._upd();s.dl0,s.dr0=s.al,s.ar"
+  ]},
+  get_imu_yaw: { deps: ['ensure_imu'], code: [
+    " def get_imu_yaw(s):",
+    "  try:imu=s.ensure_imu();imu.update();return round(float(imu.yaw())*s.ys,2)",
+    "  except Exception:return 0.0"
+  ]},
+  get_enc_yaw: { deps: ['_upd'], code: [
+    " def get_enc_yaw(s,refresh=False):",
+    "  if refresh:s._upd()",
+    "  dn=2.0*(s.ax/s.wd)*s.tg",
+    "  return round(((s.al-s.ar)-s.ho)/dn,2) if dn>0 else 0.0"
+  ]},
+  get_yaw: { deps: ['get_imu_yaw', 'get_enc_yaw'], code: [
+    " def get_yaw(s,refresh=False):",
+    "  if s.md==1:return s.get_enc_yaw(refresh)",
+    "  iy=s.get_imu_yaw()",
+    "  if s.md==2 and s.motor is not None:",
+    "   ey=s.get_enc_yaw(refresh);return round(0.75*iy+0.25*ey,2)",
+    "  return iy"
+  ]},
+  get_dist_cm: { deps: ['_upd'], code: [
+    " def get_dist_cm(s,refresh=False):",
+    "  if refresh:s._upd()",
+    "  dl,dr=s.al-s.dl0,s.ar-s.dr0;return round((0.5*(dl+dr)/360.0)*s.wc,2)"
+  ]},
+  get_angle: { deps: ['ensure_imu'], code: [
+    " def get_angle(s,axis):",
+    "  imu=s.ensure_imu();imu.update()",
+    "  if axis=='pitch':return round(float(imu.pitch()),2)",
+    "  if axis=='roll':return round(float(imu.roll()),2)",
+    "  return round(float(imu.yaw())*s.ys,2)"
+  ]},
+  get_gyro: { deps: ['ensure_imu'], code: [
+    " def get_gyro(s,idx):imu=s.ensure_imu();imu.update();return round(float(imu.read_gyroscope()[int(idx)]),2)"
+  ]},
+  init_car: { deps: ['_upd', 'calibrate_imu', 'reset_encoders'], code: [
+    " def init_car(s,uart_port='uart0',left_id=1,left_dir=-1,right_id=2,right_dir=1,wheel_cm=6.6,axle_cm=14.2,turn_gain=1.0,yaw_sign=1.0,mode=0):",
+    "  from machine import Pin;from encoderMotor import EncoderMotor;import math,time",
+    "  if uart_port=='uart0':Pin(43,Pin.IN,Pin.PULL_UP);Pin(44,Pin.OUT)",
+    "  s.motor=EncoderMotor(uart_port);s.lid,s.rid=int(left_id),int(right_id)",
+    "  s.ld=1 if int(left_dir)>=0 else -1;s.rd=1 if int(right_dir)>=0 else -1",
+    "  wd=float(wheel_cm);ax=float(axle_cm)",
+    "  if wd>20.0:wd/=10.0",
+    "  if ax>40.0:ax/=10.0",
+    "  s.wd=max(1.0,wd);s.wc=math.pi*s.wd;s.ax=max(1.0,ax);s.tg=max(0.1,float(turn_gain));s.ys=float(yaw_sign);s.md=int(mode)",
+    "  try:s.motor.set_mode(2);time.sleep_ms(8)",
+    "  except Exception:",
+    "   try:s.motor.set_mode(2,0xFD);time.sleep_ms(8)",
+    "   except Exception:pass",
+    "  s.pl=s.pr=None;s.al=s.ar=0.0;s._upd();s.calibrate_imu();s.reset_encoders()"
+  ]},
+  set_pid: { deps: [], code: [
+    " def set_pid(s,kp,ki,kd,turn_gain=None):",
+    "  s.kp,s.ki,s.kd=float(kp),float(ki),float(kd)",
+    "  if turn_gain is not None:s.tg=max(0.1,float(turn_gain))",
+    "  s.iy=s.le=0.0"
+  ]},
+  set_wheels: { deps: [], code: [
+    " def set_wheels(s,l_dps,r_dps):",
+    "  if s.motor is None:return",
+    "  import time;l=max(-480,min(480,int(l_dps)))*s.ld;r=max(-480,min(480,int(r_dps)))*s.rd",
+    "  s.motor.set_speed(s.lid,l,0);time.sleep_ms(5);s.motor.set_speed(s.rid,r,0)"
+  ]},
+  stop_car: { deps: [], code: [
+    " def stop_car(s):",
+    "  if s.motor is None:return",
+    "  import time;s.motor.set_speed(s.lid,0,0);time.sleep_ms(5);s.motor.set_speed(s.rid,0,0)"
+  ]},
+  straight_step: { deps: ['_upd', 'get_yaw', 'set_wheels'], code: [
+    " def straight_step(s,speed_dps=240,target_yaw=0.0):",
+    "  if s.md!=0:s._upd()",
+    "  er=float(target_yaw)-s.get_yaw(False);s.iy=max(-150.0,min(150.0,s.iy+er));dr=er-s.le;s.le=er",
+    "  c=s.kp*er+s.ki*s.iy+s.kd*dr;mc=max(60.0,abs(float(speed_dps))*0.65);c=max(-mc,min(mc,c))",
+    "  s.set_wheels(float(speed_dps)+c,float(speed_dps)-c)"
+  ]},
+  move_straight_cm: { deps: ['reset_encoders', '_rp', '_upd', 'get_dist_cm', 'get_yaw', 'set_wheels', 'stop_car', 'move_straight_time'], code: [
+    " def move_straight_cm(s,target_yaw,dist_cm,speed_dps=240):",
+    "  import time;d,sp=float(dist_cm),abs(float(speed_dps))",
+    "  if d==0 or sp==0:return",
+    "  s.reset_encoders();s.iy=s.le=0.0;sd=sp if d>0 else -sp;ta=abs(d)",
+    "  p1,_=s._rp()",
+    "  if p1 is not None:",
+    "   try:",
+    "    while True:",
+    "     s._upd();rm=ta-abs(s.get_dist_cm(False))",
+    "     if rm<=0.2:break",
+    "     sc=min(1.0,max(0.35,rm/4.0));er=float(target_yaw)-s.get_yaw(False);s.iy=max(-150.0,min(150.0,s.iy+er));dr=er-s.le;s.le=er",
+    "     c=s.kp*er+s.ki*s.iy+s.kd*dr;bs=sd*sc;mc=max(60.0,abs(bs)*0.65);c=max(-mc,min(mc,c))",
+    "     s.set_wheels(bs+c,bs-c);time.sleep_ms(12)",
+    "   finally:s.stop_car();s._upd()",
+    "   return",
+    "  ms=int((ta/((sp/360.0)*s.wc))*1000.0);s.move_straight_time(target_yaw,sd,ms)"
+  ]},
+  move_straight_mm: { deps: ['move_straight_cm'], code: [
+    " def move_straight_mm(s,target_yaw,distance_mm,speed_dps=240):",
+    "  s.move_straight_cm(target_yaw,float(distance_mm)/10.0,speed_dps)"
+  ]},
+  move_straight_sec: { deps: ['move_straight_time'], code: [
+    " def move_straight_sec(s,target_yaw,sec,speed_dps=240):",
+    "  s.move_straight_time(target_yaw,speed_dps,int(float(sec)*1000.0))"
+  ]},
+  move_straight_time: { deps: ['reset_encoders', 'straight_step', 'stop_car', '_upd'], code: [
+    " def move_straight_time(s,target_yaw,speed_dps,duration_ms):",
+    "  import time;s.reset_encoders();s.iy=s.le=0.0;t0=time.ticks_ms()",
+    "  try:",
+    "   while time.ticks_diff(time.ticks_ms(),t0)<int(duration_ms):s.straight_step(speed_dps,target_yaw);time.sleep_ms(15)",
+    "  finally:s.stop_car();s._upd()"
+  ]},
+  turn_to_yaw: { deps: ['_upd', 'get_yaw', 'get_imu_yaw', 'stop_car', 'set_wheels'], code: [
+    " def turn_to_yaw(s,target_yaw,max_speed_dps=220,tol=0.45,timeout_ms=5000):",
+    "  import time;s.ty=float(target_yaw);ms=max(55.0,min(480.0,abs(float(max_speed_dps))));t0=time.ticks_ms()",
+    "  if s.motor is not None:",
+    "   for _ in range(2):",
+    "    s._upd();er=s.ty-s.get_yaw(False)",
+    "    if abs(er)<=float(tol):break",
+    "    wdeg=int(round(abs(er)*(s.ax/s.wd)*s.tg))",
+    "    if wdeg<1:break",
+    "    sp=int(max(55.0,min(ms,abs(er)*4.5+35.0)));sgn=1 if er>0 else -1",
+    "    try:",
+    "     try:s.motor.set_mode(2);time.sleep_ms(5)",
+    "     except Exception:s.motor.set_mode(2,0xFD);time.sleep_ms(5)",
+    "     s.motor.set_position_speed(s.lid,wdeg*sgn*s.ld,sp);time.sleep_ms(6)",
+    "     s.motor.set_position_speed(s.rid,-wdeg*sgn*s.rd,sp)",
+    "     wt=int((wdeg/float(sp))*1000.0)+120;w0=time.ticks_ms()",
+    "     while time.ticks_diff(time.ticks_ms(),w0)<wt:s._upd();s.get_imu_yaw();time.sleep_ms(12)",
+    "    except Exception:break",
+    "  ok=0;le=0.0;it=0.0",
+    "  try:",
+    "   while time.ticks_diff(time.ticks_ms(),t0)<int(timeout_ms):",
+    "    s._upd();er=s.ty-s.get_yaw(False);dr=er-le;le=er",
+    "    if abs(er)<=float(tol):",
+    "     s.stop_car();ok+=1",
+    "     if ok>=2:break",
+    "    else:",
+    "     ok=0;it=max(-30.0,min(30.0,it+er));sp=max(42.0,min(ms,abs(4.8*er+0.35*it+1.2*dr)))",
+    "     if er>0:s.set_wheels(sp,-sp)",
+    "     else:s.set_wheels(-sp,sp)",
+    "    time.sleep_ms(12)",
+    "  finally:s.stop_car();s._upd()"
+  ]},
+  turn_by_deg: { deps: ['_upd', 'get_yaw', 'turn_to_yaw'], code: [
+    " def turn_by_deg(s,delta_deg,max_speed_dps=220):",
+    "  s._upd();s.turn_to_yaw(s.get_yaw(False)+float(delta_deg),max_speed_dps)"
+  ]},
+  _ep: { deps: [], code: [
+    " def _ep(s,addr=0x40):",
+    "  if s.pca is not None:return s.pca",
+    "  import board,time,math;from machine import I2C,SoftI2C,Pin;bus=None",
+    "  try:",
+    "   hw=I2C(0,scl=Pin(1),sda=Pin(2),freq=100000);board.i2c=hw",
+    "   if addr in hw.scan():bus=hw",
+    "  except Exception:pass",
+    "  if bus is None:",
+    "   sw=SoftI2C(scl=Pin(2),sda=Pin(1),freq=100000)",
+    "   if addr in sw.scan():bus=sw",
+    "  if bus is None:raise OSError('PCA9685 0x40 not found')",
+    "  for b in ((0,0),(1,4),(0,1)):bus.writeto(addr,bytearray(b))",
+    "  time.sleep_ms(5);bus.writeto(addr,bytearray([0]));m1=bus.readfrom(addr,1)[0]&~0x10;bus.writeto(addr,bytearray([0,m1]));time.sleep_ms(5)",
+    "  ps=int(math.floor(25000000.0/4096.0/50.0-0.5))",
+    "  for b in ((0,(m1&0x7F)|0x10),(0xFE,ps),(0,m1)):bus.writeto(addr,bytearray(b))",
+    "  time.sleep_ms(5);bus.writeto(addr,bytearray([0,m1|0x80]));s.pca=bus;return bus"
+  ]},
+  pca_set_pwm: { deps: ['_ep'], code: [
+    " def pca_set_pwm(s,ch,on,off,addr=0x40):",
+    "  bus=s._ep(addr);b=0x06+4*int(ch)",
+    "  for k,v in ((b,on&0xFF),(b+1,on>>8),(b+2,off&0xFF),(b+3,off>>8)):bus.writeto(addr,bytearray([k,v]))"
+  ]},
+  pca_servo180: { deps: ['pca_set_pwm'], code: [
+    " def pca_servo180(s,ch,deg):",
+    "  d=max(0.0,min(180.0,float(deg)));tk=int((500.0+(2000.0*d/180.0))*4096.0/20000.0)",
+    "  try:s.pca_set_pwm(ch,0,tk)",
+    "  except OSError:s.pca=None;s.pca_set_pwm(ch,0,tk)"
+  ]},
+  pca_release: { deps: ['pca_set_pwm'], code: [
+    " def pca_release(s,ch):",
+    "  try:s.pca_set_pwm(ch,0,0)",
+    "  except OSError:s.pca=None"
+  ]}
+};
+const MPY_ORDER = Object.keys(MPY_METHODS);
+function buildMpyHelper(usedSet) {
+  const active = new Set();
+  const add = (k) => {
+    if (active.has(k) || !MPY_METHODS[k]) return;
+    active.add(k);
+    (MPY_METHODS[k].deps || []).forEach(add);
+  };
+  usedSet.forEach(add);
+  const lines = [...MPY_HEADER];
+  for (const k of MPY_ORDER) {
+    if (active.has(k)) lines.push(...MPY_METHODS[k].code);
+  }
+  lines.push(...MPY_FOOTER);
+  return lines.join('\n');
+}
+const MPY_HELPER_DEF = buildMpyHelper(new Set(MPY_ORDER));
 
 class FutureLiteImuCarExtension {
   constructor(runtime) {
@@ -192,6 +267,7 @@ class FutureLiteImuCarExtension {
     this.EXTENSION_ID = EXT_ID;
     this.helpersReady = false;
     this._hookedGens = new WeakSet();
+    this._usedByDefs = new WeakMap();
     this._setupGeneratorHooks();
   }
 
@@ -269,11 +345,21 @@ class FutureLiteImuCarExtension {
     return String(val).replace(/^['"]|['"]$/g, '');
   }
 
-  _ensureGenDefs(gen) {
+  _ensureGenDefs(gen, usedMethods) {
     if (!gen.definitions_) gen.definitions_ = {};
+    let used = this._usedByDefs.get(gen.definitions_);
+    if (!used) {
+      used = new Set();
+      this._usedByDefs.set(gen.definitions_, used);
+    }
+    if (Array.isArray(usedMethods)) {
+      for (const m of usedMethods) used.add(m);
+    } else if (typeof usedMethods === 'string') {
+      used.add(usedMethods);
+    }
     gen.definitions_['import_time'] = 'import time';
     gen.definitions_['import_math'] = 'import math';
-    gen.definitions_['kb_lite_car_helper'] = MPY_HELPER_DEF;
+    gen.definitions_['kb_lite_car_helper'] = buildMpyHelper(used);
   }
 
   _registerOnGenerator(gen) {
@@ -287,40 +373,40 @@ class FutureLiteImuCarExtension {
       }
     });
 
-    const regCmd = (opcode, fn) => {
+    const regCmd = (opcode, methods, fn) => {
       gen.registerBlock(`${EXT_ID}_${opcode}`, (g, block) => {
         const targetGen = (g && g.definitions_) ? g : gen;
         const targetBlock = (block && block.type) ? block : g;
-        this._ensureGenDefs(targetGen);
+        this._ensureGenDefs(targetGen, methods);
         return fn(targetGen, targetBlock) + '\n';
       });
     };
 
-    const regRep = (opcode, fn) => {
+    const regRep = (opcode, methods, fn) => {
       gen.registerBlock(`${EXT_ID}_${opcode}`, (g, block) => {
         const targetGen = (g && g.definitions_) ? g : gen;
         const targetBlock = (block && block.type) ? block : g;
-        this._ensureGenDefs(targetGen);
+        this._ensureGenDefs(targetGen, methods);
         return [fn(targetGen, targetBlock), targetGen.ORDER_FUNCTION_CALL || 2.2];
       });
     };
 
-    regCmd('imuInitCalibrate', () => `_kb_lite_car.calibrate_imu()`);
-    regCmd('imuResetYaw', () => `_kb_lite_car.reset_yaw()`);
-    regCmd('carResetEncoders', () => `_kb_lite_car.reset_encoders()`);
-    regRep('imuGetYaw', () => `_kb_lite_car.get_yaw(True)`);
-    regRep('carGetEncYaw', () => `_kb_lite_car.get_enc_yaw(True)`);
-    regRep('carGetDistCm', () => `_kb_lite_car.get_dist_cm(True)`);
-    regRep('imuGetAngle', (g, b) => {
+    regCmd('imuInitCalibrate', ['calibrate_imu'], () => `_kb_lite_car.calibrate_imu()`);
+    regCmd('imuResetYaw', ['reset_yaw'], () => `_kb_lite_car.reset_yaw()`);
+    regCmd('carResetEncoders', ['reset_encoders'], () => `_kb_lite_car.reset_encoders()`);
+    regRep('imuGetYaw', ['get_yaw'], () => `_kb_lite_car.get_yaw(True)`);
+    regRep('carGetEncYaw', ['get_enc_yaw'], () => `_kb_lite_car.get_enc_yaw(True)`);
+    regRep('carGetDistCm', ['get_dist_cm'], () => `_kb_lite_car.get_dist_cm(True)`);
+    regRep('imuGetAngle', ['get_angle'], (g, b) => {
       const axis = this._cleanStr(this._getArg(g, b, 'AXIS', 'yaw'), 'yaw');
       return `_kb_lite_car.get_angle('${axis}')`;
     });
-    regRep('imuGetGyro', (g, b) => {
+    regRep('imuGetGyro', ['get_gyro'], (g, b) => {
       const axis = this._cleanStr(this._getArg(g, b, 'AXIS', '2'), '2');
       return `_kb_lite_car.get_gyro(${axis})`;
     });
 
-    regCmd('carInit', (g, b) => {
+    regCmd('carInit', ['init_car'], (g, b) => {
       const uart = this._cleanStr(this._getArg(g, b, 'UART', 'uart0'), 'uart0');
       const lid = this._getArg(g, b, 'LEFT_ID', '1');
       const ldir = this._getArg(g, b, 'LEFT_DIR', '-1');
@@ -333,60 +419,60 @@ class FutureLiteImuCarExtension {
       const md = this._getArg(g, b, 'MODE', '0');
       return `_kb_lite_car.init_car('${uart}', ${lid}, ${ldir}, ${rid}, ${rdir}, ${wd}, ${ax}, ${tg}, ${ys}, ${md})`;
     });
-    regCmd('carSetPid', (g, b) => {
+    regCmd('carSetPid', ['set_pid'], (g, b) => {
       const kp = this._getArg(g, b, 'KP', '8.0');
       const ki = this._getArg(g, b, 'KI', '0.05');
       const kd = this._getArg(g, b, 'KD', '1.2');
       const tg = this._getArg(g, b, 'TURN_GAIN', '1.0');
       return `_kb_lite_car.set_pid(${kp}, ${ki}, ${kd}, ${tg})`;
     });
-    regCmd('carMoveStraightCm', (g, b) => {
+    regCmd('carMoveStraightCm', ['move_straight_cm'], (g, b) => {
       const yaw = this._getArg(g, b, 'YAW', '0');
       const cm = this._getArg(g, b, 'CM', '20');
       const spd = this._getArg(g, b, 'SPEED', '240');
       return `_kb_lite_car.move_straight_cm(${yaw}, ${cm}, ${spd})`;
     });
-    regCmd('carMoveStraightSec', (g, b) => {
+    regCmd('carMoveStraightSec', ['move_straight_sec'], (g, b) => {
       const yaw = this._getArg(g, b, 'YAW', '0');
       const sec = this._getArg(g, b, 'SEC', '2');
       const spd = this._getArg(g, b, 'SPEED', '240');
       return `_kb_lite_car.move_straight_sec(${yaw}, ${sec}, ${spd})`;
     });
-    regCmd('carMoveStraightMm', (g, b) => {
+    regCmd('carMoveStraightMm', ['move_straight_mm'], (g, b) => {
       const yaw = this._getArg(g, b, 'YAW', '0');
       const dist = this._getArg(g, b, 'DIST', '300');
       const spd = this._getArg(g, b, 'SPEED', '240');
       return `_kb_lite_car.move_straight_mm(${yaw}, ${dist}, ${spd})`;
     });
-    regCmd('carMoveStraightTime', (g, b) => {
+    regCmd('carMoveStraightTime', ['move_straight_time'], (g, b) => {
       const yaw = this._getArg(g, b, 'YAW', '0');
       const ms = this._getArg(g, b, 'MS', '2000');
       const spd = this._getArg(g, b, 'SPEED', '240');
       return `_kb_lite_car.move_straight_time(${yaw}, ${spd}, ${ms})`;
     });
-    regCmd('carStraightStep', (g, b) => {
+    regCmd('carStraightStep', ['straight_step'], (g, b) => {
       const yaw = this._getArg(g, b, 'YAW', '0');
       const spd = this._getArg(g, b, 'SPEED', '240');
       return `_kb_lite_car.straight_step(${spd}, ${yaw})`;
     });
-    regCmd('carTurnToYaw', (g, b) => {
+    regCmd('carTurnToYaw', ['turn_to_yaw'], (g, b) => {
       const yaw = this._getArg(g, b, 'YAW', '90');
       const spd = this._getArg(g, b, 'SPEED', '220');
       return `_kb_lite_car.turn_to_yaw(${yaw}, ${spd})`;
     });
-    regCmd('carTurnByDeg', (g, b) => {
+    regCmd('carTurnByDeg', ['turn_by_deg'], (g, b) => {
       const deg = this._getArg(g, b, 'DEG', '90');
       const spd = this._getArg(g, b, 'SPEED', '220');
       return `_kb_lite_car.turn_by_deg(${deg}, ${spd})`;
     });
-    regCmd('carStop', () => `_kb_lite_car.stop_car()`);
+    regCmd('carStop', ['stop_car'], () => `_kb_lite_car.stop_car()`);
 
-    regCmd('pcaServo180', (g, b) => {
+    regCmd('pcaServo180', ['pca_servo180'], (g, b) => {
       const ch = this._getArg(g, b, 'CH', '0');
       const deg = this._getArg(g, b, 'DEG', '90');
       return `_kb_lite_car.pca_servo180(${ch}, ${deg})`;
     });
-    regCmd('pcaServoRelease', (g, b) => {
+    regCmd('pcaServoRelease', ['pca_release'], (g, b) => {
       const ch = this._getArg(g, b, 'CH', '0');
       return `_kb_lite_car.pca_release(${ch})`;
     });

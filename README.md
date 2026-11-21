@@ -8,8 +8,8 @@
 
 ## 🚀 直接複製以下網址貼入 `kblock.kittenbot.cc` -> `用戶擴展` -> `URL 導入`
 
-### 1. 方糖盒航向車控 (`futureSugarBoxCar` v1.5.0)
-適用：原版未來板 (`ESP32`) + 方糖盒 (`SugarBox`) 雙路串列編碼馬達 (`P2/P12`, `ID 1` & `ID 2`) 零飄移差速航向鎖定、直線與硬體位置閉迴路精準轉向。
+### 1. 方糖盒航向車控 (`futureSugarBoxCar` v1.6.0)
+適用：原版未來板 (`ESP32`) + 方糖盒 (`SugarBox`) 雙路串列編碼馬達 (`P2/P12`, `ID 1` & `ID 2`) 零飄移差速航向鎖定、直線與硬體位置閉迴路精準轉向（支援**按需精簡 MicroPython 代碼生成**）。
 
 - **可用網址 A (GitHub Raw 直連，推薦)**：
   ```text
@@ -26,8 +26,8 @@
 
 ---
 
-### 2. LiteAI航向車控 (`futureLiteImuCar` v1.5.0)
-適用：未來板 Lite AI (`ESP32-S3`) 板載 6 軸 IMU (`SC7I22 @ 0x19`) 航向角鎖定、編碼馬達 PID 直線/轉向與 `PCA9685` 16 路舵機控制。
+### 2. LiteAI航向車控 (`futureLiteImuCar` v1.6.0)
+適用：未來板 Lite AI (`ESP32-S3`) 板載 6 軸 IMU (`SC7I22 @ 0x19`) 航向角鎖定、編碼馬達 PID 直線/轉向與 `PCA9685` 16 路舵機控制（支援**按需精簡 MicroPython 代碼生成**）。
 
 - **可用網址 A (GitHub Raw 直連，推薦)**：
   ```text
@@ -44,8 +44,8 @@
 
 ---
 
-### 3. TelegramBot (`TelegramBot` v1.1.0 - 支援電腦舞台 + 主控板 MicroPython 代碼生成)
-適用：`kblock.kittenbot.cc` 線上舞台模式 **與** 未來板／未來板 Lite AI 主控板（MicroPython 代碼生成與上傳，透過 Wi-Fi 直連 Telegram Bot API）。
+### 3. TelegramBot (`TelegramBot` v1.2.0 - 支援電腦舞台 + 主控板按需精簡 MicroPython 代碼生成)
+適用：`kblock.kittenbot.cc` 線上舞台模式 **與** 未來板／未來板 Lite AI 主控板（按需精簡 MicroPython 代碼生成與上傳，僅輸出有使用的積木函式，透過 Wi-Fi 直連 Telegram Bot API）。
 
 - **可用網址 A (GitHub Raw 直連，推薦)**：
   ```text
